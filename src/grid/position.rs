@@ -1,9 +1,7 @@
 use std::fmt::{Display, Formatter};
-use std::ops::{Index, IndexMut};
 
 use serde::{Deserialize, Serialize};
 
-use crate::cell::Cell;
 use crate::error::SetError;
 use crate::GAME_SIZE;
 
@@ -24,11 +22,11 @@ pub enum SquarePositoin {
     Middle,
     /// Right
     Right,
-    /// BottomLeft
+    /// Bottom Left
     BottomLeft,
     /// Bottom
     Bottom,
-    /// BottomRight
+    /// Bottom Right
     BottomRight,
 }
 
@@ -44,10 +42,10 @@ impl CellCoordinate {
         number < GAME_SIZE
     }
 
-    /// Create a new cell number. the input should be < 10 otherwise return [`None`]
+    /// Create a new cell number. the input should be `< 10` otherwise return [`None`]
     /// # Example
     /// ```
-    /// use sudoku::sudoku::CellCoordinate;
+    /// use sudoku::grid::CellCoordinate;
     ///
     /// assert!(CellCoordinate::new(0).is_some());
     /// assert!(CellCoordinate::new(1).is_some());
@@ -67,7 +65,7 @@ impl CellCoordinate {
     /// # Example
     /// ```
     /// use sudoku::error::ExampleError;
-    /// use sudoku::sudoku::CellCoordinate;
+    /// use sudoku::grid::CellCoordinate;
     /// # use std::error::Error;
     ///
     /// # fn main() -> Result<(), Box<dyn Error>> {
@@ -85,7 +83,7 @@ impl CellCoordinate {
     /// returns [`SetError::ValueOutOfBounds`]if the value is bigger or equal than nine.
     /// # Example
     /// ```
-    /// use sudoku::sudoku::CellCoordinate;
+    /// use sudoku::grid::CellCoordinate;
     ///
     /// let mut c = CellCoordinate::new(0).unwrap();
     /// c.set_number(2).unwrap();
@@ -118,7 +116,7 @@ impl Display for CellCoordinate {
 #[derive(
     Debug, Clone, Copy, PartialEq, PartialOrd, Ord, Eq, Hash, Serialize, Deserialize, Default,
 )]
-/// Represnet a [`Cell`] position on a [`Sudoku`]
+/// Represent a [`Cell`] position on a [`Sudoku`]
 pub struct CellPosition {
     x: CellCoordinate,
     y: CellCoordinate,
@@ -140,6 +138,16 @@ impl CellPosition {
         self.y
     }
 
+    /// Get the x coord as mut.
+    pub fn x_mut(&mut self) -> &mut CellCoordinate {
+        &mut self.x
+    }
+
+    /// Get the y coord as mut.
+    pub fn y_mut(&mut self) -> &mut CellCoordinate {
+        &mut self.y
+    }
+
     /// Get the x coord as a [`usize`].
     pub const fn x_usize(&self) -> usize {
         self.x().number()
@@ -149,43 +157,15 @@ impl CellPosition {
     pub const fn y_usize(&self) -> usize {
         self.y().number()
     }
-}
 
-#[derive(
-    Debug, Clone, Copy, PartialEq, PartialOrd, Ord, Eq, Hash, Serialize, Deserialize, Default,
-)]
-pub struct Sudoku {
-    data: [[Cell; GAME_SIZE]; GAME_SIZE],
-}
-
-impl Sudoku {
-    /// Get a reference to the cell at the given position
-    pub const fn get_cell(&self, index: CellPosition) -> &Cell {
-        &self.data[index.x_usize()][index.y_usize()]
-    }
-
-    /// Get a mut reference to the cell at the given position
-    pub fn get_cell_mut(&mut self, index: CellPosition) -> &mut Cell {
-        &mut self.data[index.x_usize()][index.y_usize()]
-    }
-
-    pub fn solve(&mut self) -> &mut Self {
-        //TODO
-        todo!()
+    /// Try create a new [`CellPosition`] from 2 usize
+    pub fn new_from_number(x: usize, y: usize) -> Option<Self> {
+        Some(Self::new(CellCoordinate::new(x)?, CellCoordinate::new(y)?))
     }
 }
 
-//TODO range
-impl Index<CellPosition> for Sudoku {
-    type Output = Cell;
-
-    fn index(&self, index: CellPosition) -> &Self::Output {
-        self.get_cell(index)
-    }
-}
-
-impl IndexMut<CellPosition> for Sudoku {
-    fn index_mut(&mut self, index: CellPosition) -> &mut Self::Output {
-        self.get_cell_mut(index)
+impl Display for CellPosition {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "({}, {})", self.x, self.y)
     }
 }

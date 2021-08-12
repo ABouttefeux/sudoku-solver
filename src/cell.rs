@@ -6,12 +6,35 @@ use serde::{Deserialize, Serialize};
 use crate::error::SetError;
 use crate::GAME_SIZE;
 
+mod possibility;
+pub use possibility::*;
+
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Ord, Eq, Hash, Serialize, Deserialize)]
 #[allow(clippy::exhaustive_enums)]
-// TODO
-enum CellState {
-    Number(CellNumber),
+// TODO remove pub crate
+pub(crate) enum CellState {
+    /// Cell number that is given
+    Given(CellNumber),
+    /// Cell number that has been solved, kowning exactly the value
+    SolvedDeduction(CellNumber),
+    /// Cell number that have been solve with backtrace
+    SolvedBackTrace(CellNumber),
+    /// Unsolved cell containing possibilities
     Empty(CellPossibilities),
+    /// Value tried
+    Guess(CellNumber, CellPossibilities),
+}
+
+impl CellState {
+    pub fn cell_number(&self) -> Option<CellNumber> {
+        match self {
+            Self::Given(number)
+            | Self::SolvedDeduction(number)
+            | Self::SolvedBackTrace(number)
+            | Self::Guess(number, _) => Some(*number),
+            Self::Empty(possibility) => possibility.cell_number(),
+        }
+    }
 }
 
 impl Default for CellState {
@@ -20,39 +43,59 @@ impl Default for CellState {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Ord, Eq, Hash, Serialize, Deserialize)]
-struct CellPossibilities {
-    possibility: [bool; GAME_SIZE],
-}
+// #[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Ord, Eq, Hash, Serialize, Deserialize)]
+// #[allow(clippy::exhaustive_enums)]
+// // TODO
+// pub enum CellStateInitial {
+//     Number(CellNumber),
+//     Empty,
+// }
 
-//TODO range
-impl Index<CellNumber> for CellPossibilities {
-    type Output = bool;
+// impl Default for CellStateInitial {
+//     fn default() -> Self {
+//         Self::Empty
+//     }
+// }
 
-    fn index(&self, pos: CellNumber) -> &Self::Output {
-        &self.possibility[pos.number() - 1]
-    }
-}
+// #[derive(
+//     Debug, Clone, Copy, PartialEq, PartialOrd, Ord, Eq, Hash, Serialize, Deserialize, Default,
+// )]
+// pub struct CellSolved {
+//     number: CellNumber,
+// }
 
-impl IndexMut<CellNumber> for CellPossibilities {
-    fn index_mut(&mut self, pos: CellNumber) -> &mut Self::Output {
-        &mut self.possibility[pos.number() - 1]
-    }
-}
+// impl CellSolved {
+//     pub const fn new(cell: Cell) -> Option<Self> {
+//         match cell.state {
+//             CellState::Empty(_) => None,
+//             CellState::Number(number) => Some(Self { number }),
+//         }
+//     }
 
-impl Default for CellPossibilities {
-    fn default() -> Self {
-        Self {
-            possibility: [false; GAME_SIZE],
-        }
-    }
-}
+//     pub const fn new_from_number(number: CellNumber) -> Self {
+//         Self{number}
+//     }
+// }
 
 #[derive(
     Debug, Clone, Copy, PartialEq, PartialOrd, Ord, Eq, Hash, Serialize, Deserialize, Default,
 )]
 pub struct Cell {
     state: CellState,
+}
+
+impl Cell {
+    //TODO remove pub
+    /// Getter on the state
+    pub(crate) const fn state(&self) -> CellState {
+        self.state
+    }
+
+    //TODO remove pub
+    /// mut ref to the sate
+    pub(crate) fn state_mut(&mut self) -> &mut CellState {
+        &mut self.state
+    }
 }
 
 /// Represent a number that a cell can hold. Can only hold 1 thought 9

@@ -30,7 +30,7 @@
 #![warn(clippy::missing_errors_doc)]
 #![warn(missing_docs)]
 #![forbid(unsafe_code)]
-#![doc(html_root_url = "https://docs.rs/roccat-vulcan-api-rs/0.2.1")]
+#![doc(html_root_url = "https://docs.rs/sudoku/0.0.0")]
 #![warn(clippy::all)]
 #![warn(clippy::exhaustive_enums)]
 #![warn(rustdoc::missing_crate_level_docs)]
@@ -39,7 +39,14 @@
 
 pub mod cell;
 pub mod error;
-pub mod sudoku;
-pub mod utils;
+pub mod grid;
+pub mod size;
 
-const GAME_SIZE: usize = 9;
+#[cfg(test)]
+mod test;
+
+const SQUARE_SIZE: usize = 3;
+const GAME_SIZE: usize = SQUARE_SIZE * SQUARE_SIZE;
+
+/// Privte traite to prevent the implementation by other struct outside the crate
+trait Sealed {}
