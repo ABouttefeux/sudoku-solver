@@ -16,8 +16,7 @@ impl GameSize {
     }
 
     // both OK as the inital number is a usize
-    #[allow(clippy::cast_possible_truncation)]
-    #[allow(clippy::cast_sign_loss)]
+
     /// Try to create a game size from the input number, only accept square number
     /// # Example
     /// ```
@@ -30,6 +29,8 @@ impl GameSize {
     /// assert!(GameSize::new(35).is_none());
     /// assert!(GameSize::new(50).is_none());
     /// ```
+    #[allow(clippy::cast_possible_truncation)]
+    #[allow(clippy::cast_sign_loss)]
     pub fn new(size: usize) -> Option<Self> {
         let sqrt = (size as f64).sqrt();
         if relative_eq!(sqrt, sqrt.round()) {

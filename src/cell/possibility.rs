@@ -15,9 +15,17 @@ pub(crate) struct CellPossibilities {
 }
 
 impl CellPossibilities {
+    /// Create a new configuration where all the numbers are possible.
     pub const fn new() -> Self {
         Self {
             possibility: [true; GAME_SIZE],
+        }
+    }
+
+    /// Create a new configuration with no possiblity at all.
+    pub const fn new_no_possibility() -> Self {
+        Self {
+            possibility: [false; GAME_SIZE],
         }
     }
 
@@ -32,6 +40,10 @@ impl CellPossibilities {
     pub fn remove_possibility(&mut self, pos: CellNumber) -> &mut Self {
         self[pos] = false;
         self
+    }
+
+    pub fn number_of_possibility(&self) -> usize {
+        self.possibility.iter().filter(|b| **b).count()
     }
 
     pub fn cell_number(&self) -> Option<CellNumber> {
@@ -50,19 +62,17 @@ impl CellPossibilities {
         number
     }
 
-    pub fn into_vec(&self) -> Vec<CellNumber> {
-        let mut vec = Vec::new();
-        for (number, b) in self
-            .possibility
-            .iter()
+    pub fn into_vec(self) -> Vec<CellNumber> {
+        IntoIterator::into_iter(self.possibility)
             .enumerate()
-            .map(|(nb, b)| (nb + 1, *b))
-        {
-            if b {
-                vec.push(CellNumber::new(number).unwrap());
-            }
-        }
-        vec
+            .filter_map(|(index, b)| {
+                if b {
+                    Some(CellNumber::new(index + 1).unwrap())
+                } else {
+                    None
+                }
+            })
+            .collect()
     }
 
     pub fn iter(

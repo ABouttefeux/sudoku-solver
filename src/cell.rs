@@ -1,5 +1,4 @@
 use std::fmt::{Display, Formatter};
-use std::ops::{Index, IndexMut};
 
 use serde::{Deserialize, Serialize};
 
@@ -8,6 +7,8 @@ use crate::GAME_SIZE;
 
 mod possibility;
 pub use possibility::*;
+mod guess;
+pub use guess::*;
 
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Ord, Eq, Hash, Serialize, Deserialize)]
 #[allow(clippy::exhaustive_enums)]
@@ -22,17 +23,24 @@ pub(crate) enum CellState {
     /// Unsolved cell containing possibilities
     Empty(CellPossibilities),
     /// Value tried
-    Guess(CellNumber, CellPossibilities),
+    Guess(CellGuess),
 }
 
 impl CellState {
     pub fn cell_number(&self) -> Option<CellNumber> {
         match self {
-            Self::Given(number)
-            | Self::SolvedDeduction(number)
-            | Self::SolvedBackTrace(number)
-            | Self::Guess(number, _) => Some(*number),
+            Self::Given(number) | Self::SolvedDeduction(number) | Self::SolvedBackTrace(number) => {
+                Some(*number)
+            }
+            Self::Guess(guess) => guess.cell_number(),
             Self::Empty(possibility) => possibility.cell_number(),
+        }
+    }
+
+    pub const fn new(nb: Option<CellNumber>) -> Self {
+        match nb {
+            Some(nb) => Self::Given(nb),
+            None => Self::Empty(CellPossibilities::new()),
         }
     }
 }
@@ -85,6 +93,9 @@ pub struct Cell {
 }
 
 impl Cell {
+    pub(crate) const fn new(state: CellState) -> Self {
+        Self { state }
+    }
     //TODO remove pub
     /// Getter on the state
     pub(crate) const fn state(&self) -> CellState {

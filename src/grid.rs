@@ -1,5 +1,6 @@
 use std::error::Error;
 use std::fmt::{Display, Formatter};
+use std::iter::FusedIterator;
 use std::ops::{BitAnd, BitOr, BitXor, Index, IndexMut};
 
 use array_macro::array;
@@ -34,6 +35,12 @@ pub struct Sudoku {
 // }
 
 impl Sudoku {
+    pub fn new(input: [[usize; GAME_SIZE]; GAME_SIZE]) -> Self {
+        Self {
+            data: array![x => array![y => Cell::new(CellState::new(CellNumber::new(input[x][y]))); GAME_SIZE];GAME_SIZE ],
+        }
+    }
+
     /// Get a reference to the cell at the given position
     pub const fn get_cell(&self, index: CellPosition) -> &Cell {
         &self.data[index.x_usize()][index.y_usize()]
@@ -45,14 +52,40 @@ impl Sudoku {
     }
 
     /// Try solve the system by using deducting method
-    pub fn try_solve(&mut self) -> &mut Self {
-        //TODO
-        todo!()
+    /// # Errors
+    /// return an error if there is an inconsitency in the configuration
+    pub fn try_solve(&mut self) -> Result<VerificationResult, VerificationError> {
+        // TODO optmize
+        loop {
+            let mut modification = false;
+
+            for iterators in Self::rows() {
+                for pos in iterators {
+                    if let CellState::Empty(_) = self[pos].state() {
+                        let possibility = self.possibility_cell(pos)?;
+                        if let Some(number) = possibility.cell_number() {
+                            modification = true;
+                            self[pos] = Cell::new(CellState::SolvedDeduction(number));
+                        } else {
+                            // add empty
+                        }
+                    }
+                }
+            }
+            if !modification {
+                break;
+            }
+        }
+        self.verify_configuration()
     }
 
     /// Solve using the backtrace methode
     pub fn solve_back_trace(&mut self) -> &mut Self {
-        //TODO
+        for iterators in Self::rows() {
+            for pos in iterators {
+                let cell = self[pos];
+            }
+        }
         todo!()
     }
 
@@ -164,7 +197,7 @@ impl Sudoku {
                     vec_pos.insert(count_given, pos);
                     count_given += 1;
                 }
-                CellState::Guess(_, _) => {
+                CellState::Guess(_) => {
                     vec_pos.insert(count_given + count_guess, pos);
                     count_guess += 1;
                 }
@@ -226,7 +259,7 @@ impl Sudoku {
     ) -> Result<CellPossibilities, VerificationError> {
         let array = self.sorted_cell_by_number(it);
 
-        let mut possibilities = CellPossibilities::new();
+        let mut possibilities = CellPossibilities::new_no_possibility();
         for (index, vec) in IntoIterator::into_iter(array).enumerate() {
             if vec.len() >= 2 {
                 return Err(Self::report_verification_error_conflict(vec));
@@ -245,6 +278,18 @@ impl Sudoku {
         Ok(self.possibility_iter(&mut row.filter(filter_cell))?
             & self.possibility_iter(&mut col.filter(filter_cell))?
             & self.possibility_iter(&mut square.filter(filter_cell))?)
+    }
+
+    /// Create a iterators on all cells
+    pub fn iter(&self) -> impl Iterator<Item = &Cell> + FusedIterator + DoubleEndedIterator {
+        self.data.iter().flatten()
+    }
+
+    /// Create a iterators on all cells with a mut reference
+    pub fn iter_mut(
+        &mut self,
+    ) -> impl Iterator<Item = &mut Cell> + FusedIterator + DoubleEndedIterator {
+        self.data.iter_mut().flatten()
     }
 }
 
@@ -334,5 +379,55 @@ impl Index<CellPosition> for Sudoku {
 impl IndexMut<CellPosition> for Sudoku {
     fn index_mut(&mut self, index: CellPosition) -> &mut Self::Output {
         self.get_cell_mut(index)
+    }
+}
+
+const SPACING_CELL: usize = 1;
+
+#[allow(clippy::cast_possible_truncation)]
+#[allow(clippy::cast_sign_loss)]
+fn size_number(number: usize) -> usize {
+    ((number as f64).log10().floor() as usize) + 1
+}
+
+fn write_line_separation(f: &mut Formatter<'_>) -> std::fmt::Result {
+    for _ in 0..GAME_SIZE {
+        write!(f, "+")?;
+        write!(
+            f,
+            "{}",
+            "-".repeat(size_number(GAME_SIZE) + SPACING_CELL * 2)
+        )?;
+    }
+    writeln!(f, "+")
+}
+
+impl Display for Sudoku {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        for row in self.data {
+            write_line_separation(f)?;
+            for cell in row {
+                write!(f, "|")?;
+                if let Some(number) = cell.state().cell_number() {
+                    write!(
+                        f,
+                        "{}",
+                        " ".repeat(
+                            SPACING_CELL + size_number(GAME_SIZE) - size_number(number.number())
+                        )
+                    )?;
+                    #[allow(clippy::repeat_once)] // because it is a constant that could be not 1.
+                    write!(f, "{}{}", number, " ".repeat(SPACING_CELL))?;
+                } else {
+                    write!(
+                        f,
+                        "{}",
+                        " ".repeat(size_number(GAME_SIZE) + SPACING_CELL * 2)
+                    )?;
+                }
+            }
+            writeln!(f, "|")?;
+        }
+        write_line_separation(f)
     }
 }

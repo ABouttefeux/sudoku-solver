@@ -115,7 +115,7 @@ impl Square {
     }
 }
 
-impl<'a> Iterator for Square {
+impl Iterator for Square {
     type Item = CellPosition;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -164,3 +164,83 @@ impl Sealed for Column {}
 impl SudokuIter for Column {}
 impl Sealed for Square {}
 impl SudokuIter for Square {}
+
+#[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Ord, Eq, Hash, Serialize, Deserialize)]
+enum ElementTracker<T> {
+    First,
+    Element(T),
+    Last,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Ord, Eq, Hash, Serialize, Deserialize)]
+enum Direction {
+    Forward,
+    Backward,
+}
+
+#[derive(Debug, Clone, PartialEq, PartialOrd, Ord, Eq, Hash, Serialize, Deserialize)]
+struct BackTracePositionTracker {
+    el: ElementTracker<CellPosition>,
+}
+
+impl BackTracePositionTracker {
+    pub const fn new() -> Self {
+        Self {
+            el: ElementTracker::First,
+        }
+    }
+
+    pub fn next(&mut self) -> Option<CellPosition> {
+        self.move_pos(Direction::Forward)
+    }
+
+    pub fn previous(&mut self) -> Option<CellPosition> {
+        self.move_pos(Direction::Backward)
+    }
+
+    fn move_pos(&mut self, d: Direction) -> Option<CellPosition> {
+        match self.el {
+            ElementTracker::First => match d {
+                Direction::Forward => {
+                    let pos = CellPosition::new_from_number(0, 0).unwrap();
+                    self.el = ElementTracker::Element(pos);
+                    Some(pos)
+                }
+                Direction::Backward => None,
+            },
+            ElementTracker::Element(pos) => {
+                let offset = match d {
+                    Direction::Forward => 1_isize,
+                    Direction::Backward => -1_isize,
+                };
+                todo!()
+            }
+            ElementTracker::Last => match d {
+                Direction::Forward => None,
+                Direction::Backward => {
+                    let pos = CellPosition::new_from_number(GAME_SIZE - 1, GAME_SIZE - 1).unwrap();
+                    self.el = ElementTracker::Element(pos);
+                    Some(pos)
+                }
+            },
+        }
+    }
+}
+
+impl Iterator for BackTracePositionTracker {
+    type Item = CellPosition;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.next()
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        todo!()
+    }
+}
+
+impl Default for BackTracePositionTracker {
+    fn default() -> Self {
+        Self::new()
+    }
+}
