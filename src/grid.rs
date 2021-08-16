@@ -6,7 +6,7 @@ use std::ops::{BitAnd, BitOr, BitXor, Index, IndexMut};
 use array_macro::array;
 use serde::{Deserialize, Serialize};
 
-use crate::cell::{Cell, CellNumber, CellPossibilities, CellState};
+use crate::cell::{Cell, CellGuess, CellNumber, CellPossibilities, CellState};
 use crate::GAME_SIZE;
 
 mod iterator;
@@ -35,6 +35,7 @@ pub struct Sudoku {
 // }
 
 impl Sudoku {
+    /// Create a configuration with the given array, number 0 ore >= 10 are replaces by empty cells.
     pub fn new(input: [[usize; GAME_SIZE]; GAME_SIZE]) -> Self {
         Self {
             data: array![x => array![y => Cell::new(CellState::new(CellNumber::new(input[x][y]))); GAME_SIZE];GAME_SIZE ],
@@ -80,13 +81,50 @@ impl Sudoku {
     }
 
     /// Solve using the backtrace methode
-    pub fn solve_back_trace(&mut self) -> &mut Self {
-        for iterators in Self::rows() {
-            for pos in iterators {
-                let cell = self[pos];
+    /// # Errors
+    /// return an error if there is an inconsitency in the configuration
+    pub fn solve_back_trace(&mut self) -> Result<(), VerificationError> {
+        let mut direction = Direction::Forward;
+        let mut pos_tracker = BackTracePositionTracker::new();
+        loop {
+            // println!("{}", self);
+            // console::Term::stderr()
+            //     .move_cursor_up(GAME_SIZE * 2 + 2)
+            //     .unwrap();
+            let pos = pos_tracker.move_pos(direction);
+            match pos {
+                Some(pos) => match self[pos].state_mut() {
+                    CellState::Given(_number)
+                    | CellState::SolvedDeduction(_number)
+                    | CellState::SolvedBackTrace(_number) => {}
+                    CellState::Empty(_possibilities) => {
+                        // let p = match possibilities {
+                        //     Some(possibilities) => possibilities,
+                        //     None => self.possibility_cell(pos)?,
+                        // };
+                        let p = self.possibility_cell(pos)?;
+                        match CellGuess::new(p) {
+                            Some(guess) => {
+                                direction = Direction::Forward;
+                                self[pos] = Cell::new(CellState::Guess(guess));
+                            }
+                            None => direction = Direction::Backward,
+                        }
+                    }
+                    CellState::Guess(ref mut guess) => match guess.next_guess() {
+                        Some(_) => direction = Direction::Forward,
+                        None => {
+                            direction = Direction::Backward;
+                            self[pos] = Cell::new(CellState::Empty(None));
+                        }
+                    },
+                },
+                None => match direction {
+                    Direction::Forward => break Ok(()),
+                    Direction::Backward => unreachable!(),
+                },
             }
         }
-        todo!()
     }
 
     /// Returns all rows.
@@ -270,7 +308,7 @@ impl Sudoku {
         Ok(possibilities)
     }
 
-    ///
+    /// Return the possibility of numbers a cell can have
     /// note : Exclude pos from the numbers so it can be use to recompute the possibility on a guessed cell
     fn possibility_cell(&self, pos: CellPosition) -> Result<CellPossibilities, VerificationError> {
         let (row, col, square) = Self::row_column_square(pos);

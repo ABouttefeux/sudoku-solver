@@ -172,14 +172,18 @@ enum ElementTracker<T> {
     Last,
 }
 
+/// Represent either a forward or backward direction
+#[allow(clippy::exhaustive_enums)]
 #[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Ord, Eq, Hash, Serialize, Deserialize)]
-enum Direction {
+pub enum Direction {
+    /// Forward direction i.e. `+1`
     Forward,
+    /// Backward direction i.e. `-1`
     Backward,
 }
 
 #[derive(Debug, Clone, PartialEq, PartialOrd, Ord, Eq, Hash, Serialize, Deserialize)]
-struct BackTracePositionTracker {
+pub struct BackTracePositionTracker {
     el: ElementTracker<CellPosition>,
 }
 
@@ -198,7 +202,7 @@ impl BackTracePositionTracker {
         self.move_pos(Direction::Backward)
     }
 
-    fn move_pos(&mut self, d: Direction) -> Option<CellPosition> {
+    pub fn move_pos(&mut self, d: Direction) -> Option<CellPosition> {
         match self.el {
             ElementTracker::First => match d {
                 Direction::Forward => {
@@ -208,13 +212,49 @@ impl BackTracePositionTracker {
                 }
                 Direction::Backward => None,
             },
-            ElementTracker::Element(pos) => {
-                let offset = match d {
-                    Direction::Forward => 1_isize,
-                    Direction::Backward => -1_isize,
-                };
-                todo!()
-            }
+            ElementTracker::Element(ref mut pos) => match d {
+                Direction::Forward => {
+                    let x = pos.x_usize() + 1;
+                    match pos.x_mut().set_number(x) {
+                        Ok(()) => Some(*pos),
+                        Err(_) => {
+                            pos.x_mut().set_number(0).unwrap();
+                            let y = pos.y_usize() + 1;
+                            match pos.y_mut().set_number(y) {
+                                Ok(()) => Some(*pos),
+                                Err(_) => {
+                                    self.el = ElementTracker::Last;
+                                    None
+                                }
+                            }
+                        }
+                    }
+                }
+                Direction::Backward => {
+                    let x = pos.x_usize().checked_sub(1);
+                    match x {
+                        Some(x) => {
+                            pos.x_mut().set_number(x).unwrap();
+                            Some(*pos)
+                        }
+                        None => {
+                            let x = GAME_SIZE - 1;
+                            let y = pos.y_usize().checked_sub(1);
+                            match y {
+                                Some(y) => {
+                                    pos.x_mut().set_number(x).unwrap();
+                                    pos.y_mut().set_number(y).unwrap();
+                                    Some(*pos)
+                                }
+                                None => {
+                                    self.el = ElementTracker::First;
+                                    None
+                                }
+                            }
+                        }
+                    }
+                }
+            },
             ElementTracker::Last => match d {
                 Direction::Forward => None,
                 Direction::Backward => {
@@ -242,5 +282,62 @@ impl Iterator for BackTracePositionTracker {
 impl Default for BackTracePositionTracker {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn back_trace_iter_basic() {
+        let mut iter = BackTracePositionTracker::new();
+        assert_eq!(iter.next(), CellPosition::new_from_number(0, 0));
+        assert_eq!(iter.next(), CellPosition::new_from_number(1, 0));
+        for i in 2..GAME_SIZE {
+            let pos = CellPosition::new_from_number(i, 0);
+            assert!(pos.is_some());
+            assert_eq!(iter.next(), pos);
+        }
+        assert_eq!(iter.next(), CellPosition::new_from_number(0, 1));
+    }
+
+    #[test]
+    fn back_trace_iter_extensive() {
+        let mut iter = BackTracePositionTracker::new();
+        for y in 0..GAME_SIZE {
+            for x in 0..GAME_SIZE {
+                let pos = CellPosition::new_from_number(x, y);
+                assert!(pos.is_some());
+                assert_eq!(iter.next(), pos);
+            }
+        }
+        for _ in 0_i32..10_i32 {
+            assert_eq!(iter.next(), None);
+        }
+
+        for y in (0..GAME_SIZE).rev() {
+            for x in (0..GAME_SIZE).rev() {
+                let pos = CellPosition::new_from_number(x, y);
+                assert!(pos.is_some());
+                assert_eq!(iter.previous(), pos);
+            }
+        }
+
+        for _ in 0_i32..10_i32 {
+            assert_eq!(iter.previous(), None);
+        }
+        assert_eq!(iter.next(), CellPosition::new_from_number(0, 0));
+        assert_eq!(iter.next(), CellPosition::new_from_number(1, 0));
+        for i in 2..GAME_SIZE {
+            let pos = CellPosition::new_from_number(i, 0);
+            assert!(pos.is_some());
+            assert_eq!(iter.next(), pos);
+        }
+        assert_eq!(iter.previous(), CellPosition::new_from_number(7, 0));
+        assert_eq!(iter.next(), CellPosition::new_from_number(8, 0));
+        assert_eq!(iter.next(), CellPosition::new_from_number(0, 1));
+        assert_eq!(iter.previous(), CellPosition::new_from_number(8, 0));
+        assert_eq!(iter.previous(), CellPosition::new_from_number(7, 0));
     }
 }

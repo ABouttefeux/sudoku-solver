@@ -29,7 +29,7 @@ impl CellGuess {
     /// mut the contente to refelct the next guess
     pub fn next_guess(&mut self) -> Option<CellNumber> {
         if let Some(number) = self.number {
-            for (index, b) in self.possibility.iter().skip(number.number()).enumerate() {
+            for (index, b) in self.possibility.iter().enumerate().skip(number.number()) {
                 if *b {
                     let number = CellNumber::new(index + 1);
                     debug_assert!(number.is_some());

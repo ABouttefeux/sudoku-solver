@@ -21,7 +21,7 @@ pub(crate) enum CellState {
     /// Cell number that have been solve with backtrace
     SolvedBackTrace(CellNumber),
     /// Unsolved cell containing possibilities
-    Empty(CellPossibilities),
+    Empty(Option<CellPossibilities>),
     /// Value tried
     Guess(CellGuess),
 }
@@ -33,21 +33,21 @@ impl CellState {
                 Some(*number)
             }
             Self::Guess(guess) => guess.cell_number(),
-            Self::Empty(possibility) => possibility.cell_number(),
+            Self::Empty(possibility) => possibility.as_ref()?.cell_number(),
         }
     }
 
     pub const fn new(nb: Option<CellNumber>) -> Self {
         match nb {
             Some(nb) => Self::Given(nb),
-            None => Self::Empty(CellPossibilities::new()),
+            None => Self::Empty(None),
         }
     }
 }
 
 impl Default for CellState {
     fn default() -> Self {
-        Self::Empty(CellPossibilities::default())
+        Self::Empty(None)
     }
 }
 
