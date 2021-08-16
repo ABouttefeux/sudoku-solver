@@ -29,18 +29,20 @@ impl CellPossibilities {
         }
     }
 
-    pub fn get(&self, pos: CellNumber) -> &bool {
-        &self[pos]
-    }
+    // TODO
 
-    pub fn get_mut(&mut self, pos: CellNumber) -> &mut bool {
-        &mut self[pos]
-    }
+    // pub fn get(&self, pos: CellNumber) -> &bool {
+    //     &self[pos]
+    // }
 
-    pub fn remove_possibility(&mut self, pos: CellNumber) -> &mut Self {
-        self[pos] = false;
-        self
-    }
+    // pub fn get_mut(&mut self, pos: CellNumber) -> &mut bool {
+    //     &mut self[pos]
+    // }
+
+    // pub fn remove_possibility(&mut self, pos: CellNumber) -> &mut Self {
+    //     self[pos] = false;
+    //     self
+    // }
 
     pub fn number_of_possibility(&self) -> usize {
         self.possibility.iter().filter(|b| **b).count()

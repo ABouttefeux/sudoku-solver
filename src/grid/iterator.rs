@@ -182,26 +182,42 @@ pub enum Direction {
     Backward,
 }
 
+/// An iterator that can move forward or backwward.
+/// It is used to track the position in the back trace method
 #[derive(Debug, Clone, PartialEq, PartialOrd, Ord, Eq, Hash, Serialize, Deserialize)]
 pub struct BackTracePositionTracker {
     el: ElementTracker<CellPosition>,
 }
 
 impl BackTracePositionTracker {
+    /// Create a new tracker stating on the fist ellement
+    /// # Example
+    /// ```
+    /// use sudoku::grid::{BackTracePositionTracker, CellPosition};
+    ///
+    /// let mut iter = BackTracePositionTracker::new();
+    /// assert_eq!(iter.previous(), None);
+    /// let mut iter = BackTracePositionTracker::new();
+    /// assert_eq!(iter.next(), CellPosition::new_from_number(0, 0));
+    /// ```
     pub const fn new() -> Self {
         Self {
             el: ElementTracker::First,
         }
     }
 
-    pub fn next(&mut self) -> Option<CellPosition> {
+    /// Get the next position see [`BackTracePositionTracker::move_pos`]
+    pub fn next_element(&mut self) -> Option<CellPosition> {
         self.move_pos(Direction::Forward)
     }
 
+    /// Get the previous position, see [`BackTracePositionTracker::move_pos`]
     pub fn previous(&mut self) -> Option<CellPosition> {
         self.move_pos(Direction::Backward)
     }
 
+    /// Move the position in a certain direction.
+    /// Returns [`None`] if at the end of the configuration
     pub fn move_pos(&mut self, d: Direction) -> Option<CellPosition> {
         match self.el {
             ElementTracker::First => match d {
@@ -271,7 +287,7 @@ impl Iterator for BackTracePositionTracker {
     type Item = CellPosition;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.next()
+        self.next_element()
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {

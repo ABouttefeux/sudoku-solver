@@ -43,16 +43,43 @@ impl GameSize {
     }
 
     /// Get the square size
+    /// # Example
+    /// ```
+    /// use sudoku::size::GameSize;
+    ///
+    /// let size = GameSize::new(16).unwrap();
+    /// assert_eq!(size.square_size(), 4);
+    /// let size = GameSize::new_square_size(3);
+    /// assert_eq!(size.square_size(), 3);
+    /// ```
     pub const fn square_size(&self) -> usize {
         self.square_size
     }
 
     /// Get the game size
+    /// # Example
+    /// ```
+    /// use sudoku::size::GameSize;
+    ///
+    /// let size = GameSize::new(16).unwrap();
+    /// assert_eq!(size.game_size(), 16);
+    /// let size = GameSize::new_square_size(3);
+    /// assert_eq!(size.game_size(), 9);
+    /// ```
     pub const fn game_size(&self) -> usize {
         self.square_size() * self.square_size()
     }
 
     /// Get the number of cell in total
+    /// # Example
+    /// ```
+    /// use sudoku::size::GameSize;
+    ///
+    /// let size = GameSize::new(16).unwrap();
+    /// assert_eq!(size.cell_number(), 16 * 16);
+    /// let size = GameSize::new_square_size(3);
+    /// assert_eq!(size.cell_number(), 81);
+    /// ```
     pub const fn cell_number(&self) -> usize {
         self.game_size() * self.game_size()
     }
@@ -60,6 +87,12 @@ impl GameSize {
 
 impl Default for GameSize {
     /// Returns the classic 9X9 grid
+    /// # Example
+    /// ```
+    /// use sudoku::size::GameSize;
+    ///
+    /// assert_eq!(GameSize::default(), GameSize::new_square_size(3));
+    /// ```
     fn default() -> Self {
         Self::new_square_size(3)
     }

@@ -28,7 +28,8 @@ jobs:
           export RUSTFLAGS="-Zinstrument-coverage"
           export RUSTDOCFLAGS="-Zinstrument-coverage -Zunstable-options --persist-doctests target/debug/doctestbins"
           cargo +nightly build --verbose --all
-          LLVM_PROFILE_FILE="sudoku-solver-%p-%m.profraw" cargo +nightly test --no-fail-fast --verbose --all
+          LLVM_PROFILE_FILE="sudoku-solver-%p-%m-test.profraw" cargo +nightly test --no-fail-fast --verbose --all
+          LLVM_PROFILE_FILE="sudoku-solver-%p-%m-run.profraw" cargo +nightly run
 
       - name: parse code coverage
         run: ./grcov . --binary-path ./target/debug/ -s . -t lcov --branch --ignore-not-existing --ignore "/*" -o lcov.info

@@ -1,9 +1,14 @@
+//! Contain the main utility for [`Sudoku`]
+// TODO
+
 use std::error::Error;
 use std::fmt::{Display, Formatter};
 use std::iter::FusedIterator;
 use std::ops::{BitAnd, BitOr, BitXor, Index, IndexMut};
 
 use array_macro::array;
+use rand::distributions::Uniform;
+use rand::Rng;
 use serde::{Deserialize, Serialize};
 
 use crate::cell::{Cell, CellGuess, CellNumber, CellPossibilities, CellState};
@@ -42,6 +47,37 @@ impl Sudoku {
         }
     }
 
+    /// Create an empty config with `number_of_hints` randoms hints
+    // TODO give valide config
+    pub fn random(number_of_hints: usize, rng: &mut impl Rng) -> Option<Self> {
+        if number_of_hints > GAME_SIZE * GAME_SIZE {
+            None
+        } else {
+            let distribution = Uniform::new(0, GAME_SIZE);
+            let data = [[Cell::new(CellState::Empty(None)); GAME_SIZE]; GAME_SIZE];
+            let mut sudoku = Self { data };
+            let mut number_of_hints_placed = 0;
+            while number_of_hints_placed < number_of_hints {
+                let position = CellPosition::new_from_number(
+                    rng.sample(distribution),
+                    rng.sample(distribution),
+                )
+                .unwrap();
+                if let CellState::Empty(_) = sudoku[position].state() {
+                    // TODO check the unwrap
+                    let possibilities = sudoku.possibility_cell(position).unwrap();
+                    if possibilities.number_of_possibility() > 0 {
+                        let vec = possibilities.into_vec();
+                        let d2 = Uniform::new(0, vec.len());
+                        *sudoku[position].state_mut() = CellState::Given(vec[rng.sample(d2)]);
+                        number_of_hints_placed += 1;
+                    }
+                }
+            }
+            Some(sudoku)
+        }
+    }
+
     /// Get a reference to the cell at the given position
     pub const fn get_cell(&self, index: CellPosition) -> &Cell {
         &self.data[index.x_usize()][index.y_usize()]
@@ -58,6 +94,10 @@ impl Sudoku {
     pub fn try_solve(&mut self) -> Result<VerificationResult, VerificationError> {
         // TODO optmize
         loop {
+            // println!("{}", self);
+            // console::Term::stderr()
+            //     .move_cursor_up(GAME_SIZE * 2 + 2)
+            //     .unwrap();
             let mut modification = false;
 
             for iterators in Self::rows() {
@@ -121,7 +161,7 @@ impl Sudoku {
                 },
                 None => match direction {
                     Direction::Forward => break Ok(()),
-                    Direction::Backward => unreachable!(),
+                    Direction::Backward => unreachable!(), // TODO error
                 },
             }
         }

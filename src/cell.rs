@@ -1,3 +1,6 @@
+//! contain cell and cell states
+// TODO doc
+
 use std::fmt::{Display, Formatter};
 
 use serde::{Deserialize, Serialize};
@@ -6,9 +9,9 @@ use crate::error::SetError;
 use crate::GAME_SIZE;
 
 mod possibility;
-pub use possibility::*;
+pub(crate) use possibility::*;
 mod guess;
-pub use guess::*;
+pub(crate) use guess::*;
 
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Ord, Eq, Hash, Serialize, Deserialize)]
 #[allow(clippy::exhaustive_enums)]
@@ -88,6 +91,7 @@ impl Default for CellState {
 #[derive(
     Debug, Clone, Copy, PartialEq, PartialOrd, Ord, Eq, Hash, Serialize, Deserialize, Default,
 )]
+/// Reprensent a cell in a [`Sudoku`]
 pub struct Cell {
     state: CellState,
 }
