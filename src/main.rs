@@ -3,20 +3,21 @@ use sudoku::grid::Sudoku;
 
 fn main() {
     main_predef();
-    //main_random();
+    main_random();
 }
 
 fn main_random() {
     let mut rng = thread_rng();
-    let mut sudoku = Sudoku::random(25, &mut rng).unwrap();
-    let mut sudoku_2 = sudoku.clone();
+    let mut sudoku = Sudoku::random(45, &mut rng).unwrap();
 
     println!("{}", sudoku);
-    sudoku_2.try_solve().unwrap();
-    println!("{}", sudoku_2);
-    println!("-------");
-    sudoku.solve_back_trace().unwrap();
+    sudoku.try_solve().unwrap();
     println!("{}", sudoku);
+    println!("-------");
+    match sudoku.solve_back_trace() {
+        Ok(()) => println!("{}", sudoku),
+        Err(error) => println!("error: {}", error),
+    }
 }
 
 fn main_predef() {

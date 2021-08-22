@@ -30,7 +30,7 @@ pub enum ExampleError {
 impl Display for ExampleError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::NoneError => write!(f, "None on option"),
+            Self::NoneError => write!(f, "none on option"),
         }
     }
 }
@@ -54,3 +54,20 @@ impl Display for SetError {
 }
 
 impl Error for SetError {}
+
+#[cfg(test)]
+mod test {
+
+    use super::*;
+
+    #[test]
+    fn display() {
+        let string = ExampleError::NoneError.to_string();
+        assert!(string.contains("none"));
+        assert!(string.contains("option"));
+
+        let string = SetError::ValueOutOfBounds.to_string();
+        assert!(string.contains("the value"));
+        assert!(string.contains("out of bounds"));
+    }
+}

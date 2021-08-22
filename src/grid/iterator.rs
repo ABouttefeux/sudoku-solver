@@ -3,10 +3,11 @@ use std::iter::FusedIterator;
 use serde::{Deserialize, Serialize};
 
 use crate::grid::{CellCoordinate, CellPosition};
-use crate::{Sealed, GAME_SIZE, SQUARE_SIZE};
+use crate::private::Sealed;
+use crate::{GAME_SIZE, SQUARE_SIZE};
 
+/// Row iterator of a [`crate::grid::Sudoku`]. It iterate over the first coordinate.
 #[derive(Debug, Clone, PartialEq, PartialOrd, Ord, Eq, Hash, Serialize, Deserialize, Default)]
-/// Row iterator of a [`Sudoku`]. It iterate over the first coordinate.
 pub struct Row {
     position: Option<CellPosition>,
 }
@@ -50,7 +51,7 @@ impl ExactSizeIterator for Row {}
 impl FusedIterator for Row {}
 
 #[derive(Debug, Clone, PartialEq, PartialOrd, Ord, Eq, Hash, Serialize, Deserialize, Default)]
-/// Column iterator of a [`Sudoku`]. It iterate over the second coordinate.
+/// Column iterator of a [`crate::grid::Sudoku`]. It iterate over the second coordinate.
 pub struct Column {
     position: Option<CellPosition>,
 }
@@ -94,7 +95,7 @@ impl ExactSizeIterator for Column {}
 impl FusedIterator for Column {}
 
 #[derive(Debug, Clone, PartialEq, PartialOrd, Ord, Eq, Hash, Serialize, Deserialize, Default)]
-/// Square iterator of a [`Sudoku`].
+/// Square iterator of a [`crate::grid::Sudoku`].
 pub struct Square {
     position: Option<CellPosition>,
 }
@@ -156,7 +157,9 @@ impl ExactSizeIterator for Square {}
 
 impl FusedIterator for Square {}
 
-trait SudokuIter: Sealed + Iterator<Item = CellPosition> {}
+/// This trait cannot be implemented outside the crate as
+/// it depend on a the Sealed which is private
+pub trait SudokuIter: Sealed + Iterator<Item = CellPosition> {}
 
 impl Sealed for Row {}
 impl SudokuIter for Row {}

@@ -5,32 +5,7 @@ use serde::{Deserialize, Serialize};
 use crate::error::SetError;
 use crate::GAME_SIZE;
 
-/// Position in a square
-// TODO keep ?
-#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Ord, Eq, Hash, Serialize, Deserialize)]
-#[allow(clippy::exhaustive_enums)]
-pub enum SquarePositoin {
-    /// Top left
-    TopLeft,
-    /// Top
-    Top,
-    /// Top right
-    TopRight,
-    /// Left
-    Left,
-    /// Middle
-    Middle,
-    /// Right
-    Right,
-    /// Bottom Left
-    BottomLeft,
-    /// Bottom
-    Bottom,
-    /// Bottom Right
-    BottomRight,
-}
-
-/// Represent a coordinate on a [`Sudoku`] grid. It is a number between 0 and [`GAME_SIZE`] - 1 (which is 8).
+/// Represent a coordinate on a [`crate::grid::Sudoku`] grid. It is a number between 0 and [`GAME_SIZE`] - 1 (which is 8).
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Ord, Eq, Hash, Serialize, Deserialize)]
 pub struct CellCoordinate {
     number: usize,
@@ -116,7 +91,7 @@ impl Display for CellCoordinate {
 #[derive(
     Debug, Clone, Copy, PartialEq, PartialOrd, Ord, Eq, Hash, Serialize, Deserialize, Default,
 )]
-/// Represent a [`Cell`] position on a [`Sudoku`]
+/// Represent a [`crate::cell::Cell`] position on a [`crate::grid::Sudoku`]
 pub struct CellPosition {
     x: CellCoordinate,
     y: CellCoordinate,

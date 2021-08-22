@@ -45,8 +45,21 @@ pub mod size;
 #[cfg(test)]
 mod test;
 
-const SQUARE_SIZE: usize = 3;
-const GAME_SIZE: usize = SQUARE_SIZE * SQUARE_SIZE;
+// Improvement list,
+// const generics size
+// test algo with sudoku found online
+// optimisation ?
+// improve deduction algo
+// GUI ?
+// draw contexte
+// limit number of draw
 
-/// Privte traite to prevent the implementation by other struct outside the crate
-trait Sealed {}
+/// Size of a the square
+pub const SQUARE_SIZE: usize = 3;
+/// number of number per rows / collumns / square
+pub const GAME_SIZE: usize = SQUARE_SIZE * SQUARE_SIZE;
+
+mod private {
+    /// Private trait to prevent the implementation by other struct outside the crate
+    pub trait Sealed {}
+}

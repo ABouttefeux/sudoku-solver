@@ -1,9 +1,9 @@
 mod version_number;
 
-use crate::grid::{CellPosition, Sudoku, VerificationError, VerificationResult};
+use crate::grid::{CellPosition, SolveError, Sudoku, VerificationError, VerificationResult};
 
 #[test]
-fn sudoku_solving_deducation() -> Result<(), VerificationError> {
+fn sudoku_solving_deducation() -> Result<(), SolveError> {
     let mut sudoku = Sudoku::new([
         [3, 0, 0, 6, 0, 0, 0, 9, 0],
         [0, 4, 0, 0, 2, 0, 0, 5, 0],
@@ -47,7 +47,7 @@ fn sudoku_solving_deducation() -> Result<(), VerificationError> {
 }
 
 #[test]
-fn sudoku_solving_back_trace() -> Result<(), VerificationError> {
+fn sudoku_solving_back_trace() -> Result<(), SolveError> {
     let mut sudoku = Sudoku::new([
         [3, 0, 0, 6, 0, 0, 0, 9, 0],
         [0, 4, 0, 0, 2, 0, 0, 5, 0],
@@ -102,7 +102,7 @@ fn sudoku_solving_back_trace_error() {
     ]);
 
     let verify_error = |result| match result {
-        Err(VerificationError::HintInconsistency(c1, c2)) => {
+        Err(SolveError::VerificationError(VerificationError::HintInconsistency(c1, c2))) => {
             let p1 = CellPosition::new_from_number(0, 0).unwrap();
             let p2 = CellPosition::new_from_number(4, 0).unwrap();
             assert!(
@@ -113,6 +113,11 @@ fn sudoku_solving_back_trace_error() {
         _ => panic!("expected `VerificationError::HintInconsistency`"),
     };
 
-    verify_error(sudoku.verify_configuration().map(|_| ()));
+    verify_error(
+        sudoku
+            .verify_configuration()
+            .map(|_| ())
+            .map_err(|err| err.into()),
+    );
     verify_error(sudoku.solve_back_trace());
 }

@@ -1,7 +1,7 @@
 //! contain cell and cell states
 // TODO doc
 
-use std::fmt::{Display, Formatter};
+use std::fmt::{Binary, Display, Formatter, LowerHex, Octal, UpperHex};
 
 use serde::{Deserialize, Serialize};
 
@@ -13,6 +13,7 @@ pub(crate) use possibility::*;
 mod guess;
 pub(crate) use guess::*;
 
+/// Represent cell sate, including the storage of data while solving the configuration
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Ord, Eq, Hash, Serialize, Deserialize)]
 #[allow(clippy::exhaustive_enums)]
 // TODO remove pub crate
@@ -30,6 +31,7 @@ pub(crate) enum CellState {
 }
 
 impl CellState {
+    /// Get the cell number of this cell
     pub fn cell_number(&self) -> Option<CellNumber> {
         match self {
             Self::Given(number) | Self::SolvedDeduction(number) | Self::SolvedBackTrace(number) => {
@@ -40,6 +42,7 @@ impl CellState {
         }
     }
 
+    /// Create eithen a given or an empty configurazion
     pub const fn new(nb: Option<CellNumber>) -> Self {
         match nb {
             Some(nb) => Self::Given(nb),
@@ -88,18 +91,20 @@ impl Default for CellState {
 //     }
 // }
 
+/// Reprensent a cell in a [`crate::grid::Sudoku`]
 #[derive(
     Debug, Clone, Copy, PartialEq, PartialOrd, Ord, Eq, Hash, Serialize, Deserialize, Default,
 )]
-/// Reprensent a cell in a [`Sudoku`]
 pub struct Cell {
     state: CellState,
 }
 
 impl Cell {
+    /// Create a new cell with a given [`CellState`]
     pub(crate) const fn new(state: CellState) -> Self {
         Self { state }
     }
+
     //TODO remove pub
     /// Getter on the state
     pub(crate) const fn state(&self) -> CellState {
@@ -122,11 +127,25 @@ pub struct CellNumber {
 
 impl CellNumber {
     /// Test if the given value is in bounds
+    /// # Example
+    /// ```
+    /// use sudoku::cell::CellNumber;
+    /// use sudoku::GAME_SIZE;
+    ///
+    /// // in bounds
+    /// assert!(CellNumber::is_in_bound(1));
+    /// assert!(CellNumber::is_in_bound(GAME_SIZE - 1));
+    /// assert!(CellNumber::is_in_bound(GAME_SIZE));
+    ///
+    /// // not in bounds
+    /// assert!(!CellNumber::is_in_bound(0));
+    /// assert!(!CellNumber::is_in_bound(GAME_SIZE + 100));
+    /// ```
     pub const fn is_in_bound(number: usize) -> bool {
         number <= GAME_SIZE && number > 0
     }
 
-    /// Create a new cell number. the input should be < 10 otherwise return [`None`]
+    /// Create a new cell number. the input should be <= [`GAME_SIZE`] otherwise return [`None`]
     /// # Example
     /// ```
     /// use sudoku::cell::CellNumber;
@@ -168,16 +187,24 @@ impl CellNumber {
     /// # Example
     /// ```
     /// use sudoku::cell::CellNumber;
+    /// use sudoku::error::ExampleError;
+    /// # use std::error::Error;
     ///
-    /// let mut c = CellNumber::new(1).unwrap();
-    /// c.set_number(2).unwrap();
+    /// # fn main() -> Result<(), Box<dyn Error>> {
+    /// let mut c = CellNumber::new(1).ok_or(ExampleError::NoneError)?;
+    /// c.set_number(2)?; // set is OK()
     /// assert_eq!(c.number(), 2);
-    /// assert!(c.set_number(10).is_err());
-    /// assert_eq!(c.number(), 2);
-    /// c.set_number(4).unwrap();
+    ///
+    /// assert!(c.set_number(10).is_err()); // set did not work
+    /// assert_eq!(c.number(), 2); // the old valure remains
+    ///
+    /// c.set_number(4)?; // the set is OK
     /// assert_eq!(c.number(), 4);
-    /// assert!(c.set_number(0).is_err());
-    /// assert_eq!(c.number(), 4);
+    ///
+    /// assert!(c.set_number(0).is_err()); // 0 is not a valide numer
+    /// assert_eq!(c.number(), 4); // the old valure remains
+    /// # Ok(())
+    /// # }
     /// ```
     pub fn set_number(&mut self, number: usize) -> Result<(), SetError> {
         if Self::is_in_bound(number) {
@@ -205,5 +232,46 @@ impl Default for CellNumber {
 impl Display for CellNumber {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.number)
+    }
+}
+
+impl Binary for CellNumber {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:b}", self.number)
+    }
+}
+
+impl UpperHex for CellNumber {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:X}", self.number)
+    }
+}
+
+impl LowerHex for CellNumber {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:x}", self.number)
+    }
+}
+
+impl Octal for CellNumber {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:o}", self.number)
+    }
+}
+
+#[cfg(test)]
+mod test {
+
+    use super::*;
+
+    #[test]
+    fn t_display() {
+        let n = 1;
+        let cell = CellNumber::new(n).unwrap();
+        assert_eq!(format!("{}", cell), format!("{}", n));
+        assert_eq!(format!("{:b}", cell), format!("{:b}", n));
+        assert_eq!(format!("{:X}", cell), format!("{:X}", n));
+        assert_eq!(format!("{:x}", cell), format!("{:x}", n));
+        assert_eq!(format!("{:o}", cell), format!("{:o}", n));
     }
 }

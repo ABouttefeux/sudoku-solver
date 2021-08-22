@@ -8,8 +8,9 @@ use serde::{Deserialize, Serialize};
 use crate::cell::CellNumber;
 use crate::GAME_SIZE;
 
+/// Represent the pssibility of number that call can have
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Ord, Eq, Hash, Serialize, Deserialize)]
-/// TODO remove pub crate
+// TODO remove pub crate
 pub(crate) struct CellPossibilities {
     possibility: [bool; GAME_SIZE],
 }
@@ -64,12 +65,16 @@ impl CellPossibilities {
         number
     }
 
+    /// returns the possibility as a (sorted) vector
     pub fn into_vec(self) -> Vec<CellNumber> {
         IntoIterator::into_iter(self.possibility)
             .enumerate()
             .filter_map(|(index, b)| {
                 if b {
                     Some(CellNumber::new(index + 1).unwrap())
+                    // let nb = CellNumber::new(index + 1);
+                    // debug_assert!(nb.is_some());
+                    // nb
                 } else {
                     None
                 }
@@ -107,6 +112,15 @@ impl IndexMut<CellNumber> for CellPossibilities {
 }
 
 impl Default for CellPossibilities {
+    /// Create a [`CellPossibilities`] with all number possible
+    /// # Example
+    /// ```ignore
+    /// use sudoku::cell::CellPossibilities;
+    ///
+    /// let poss = CellPossibilities::default();
+    /// assert_eq!(CellPossibilities::new(), poss);
+    /// assert!(poss.iter/.all(|el| *el));
+    /// ```
     fn default() -> Self {
         Self::new()
     }
@@ -149,5 +163,18 @@ impl BitOrAssign for CellPossibilities {
 impl From<CellPossibilities> for Vec<CellNumber> {
     fn from(poss: CellPossibilities) -> Self {
         poss.into_vec()
+    }
+}
+
+#[cfg(test)]
+mod test {
+
+    use super::*;
+
+    #[test]
+    fn possibilities() {
+        let poss = CellPossibilities::default();
+        assert_eq!(CellPossibilities::new(), poss);
+        assert!(poss.iter().all(|el| *el));
     }
 }

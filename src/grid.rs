@@ -7,12 +7,13 @@ use std::iter::FusedIterator;
 use std::ops::{BitAnd, BitOr, BitXor, Index, IndexMut};
 
 use array_macro::array;
+use console::Style;
 use rand::distributions::Uniform;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 
 use crate::cell::{Cell, CellGuess, CellNumber, CellPossibilities, CellState};
-use crate::GAME_SIZE;
+use crate::{GAME_SIZE, SQUARE_SIZE};
 
 mod iterator;
 pub use iterator::*;
@@ -43,7 +44,13 @@ impl Sudoku {
     /// Create a configuration with the given array, number 0 ore >= 10 are replaces by empty cells.
     pub fn new(input: [[usize; GAME_SIZE]; GAME_SIZE]) -> Self {
         Self {
-            data: array![x => array![y => Cell::new(CellState::new(CellNumber::new(input[x][y]))); GAME_SIZE];GAME_SIZE ],
+            data: array![
+                x => array![
+                    y => Cell::new(CellState::new(CellNumber::new(input[x][y])));
+                    GAME_SIZE
+                ];
+                GAME_SIZE
+            ],
         }
     }
 
@@ -123,14 +130,16 @@ impl Sudoku {
     /// Solve using the backtrace methode
     /// # Errors
     /// return an error if there is an inconsitency in the configuration
-    pub fn solve_back_trace(&mut self) -> Result<(), VerificationError> {
+    pub fn solve_back_trace(&mut self) -> Result<(), SolveError> {
         let mut direction = Direction::Forward;
         let mut pos_tracker = BackTracePositionTracker::new();
         loop {
-            // println!("{}", self);
-            // console::Term::stderr()
-            //     .move_cursor_up(GAME_SIZE * 2 + 2)
-            //     .unwrap();
+            //TODO better prints
+
+            println!("{}", self);
+            console::Term::stderr()
+                .move_cursor_up(GAME_SIZE * 2 + 2)
+                .unwrap();
             let pos = pos_tracker.move_pos(direction);
             match pos {
                 Some(pos) => match self[pos].state_mut() {
@@ -161,7 +170,7 @@ impl Sudoku {
                 },
                 None => match direction {
                     Direction::Forward => break Ok(()),
-                    Direction::Backward => unreachable!(), // TODO error
+                    Direction::Backward => break Err(SolveError::ImpossibleConfiguration),
                 },
             }
         }
@@ -170,47 +179,17 @@ impl Sudoku {
     /// Returns all rows.
     pub fn rows() -> [Row; GAME_SIZE] {
         // array![ i => Row::new(CellPosition::new_from_number(0, i).unwrap(), self); 9]
-        [
-            Row::new(CellPosition::new_from_number(0, 0).unwrap()),
-            Row::new(CellPosition::new_from_number(0, 1).unwrap()),
-            Row::new(CellPosition::new_from_number(0, 2).unwrap()),
-            Row::new(CellPosition::new_from_number(0, 3).unwrap()),
-            Row::new(CellPosition::new_from_number(0, 4).unwrap()),
-            Row::new(CellPosition::new_from_number(0, 5).unwrap()),
-            Row::new(CellPosition::new_from_number(0, 6).unwrap()),
-            Row::new(CellPosition::new_from_number(0, 7).unwrap()),
-            Row::new(CellPosition::new_from_number(0, 8).unwrap()),
-        ]
+        array![ x => Row::new(CellPosition::new_from_number(0, x).unwrap()); GAME_SIZE]
     }
 
     /// returns all columns.
     pub fn columns() -> [Column; GAME_SIZE] {
-        [
-            Column::new(CellPosition::new_from_number(0, 0).unwrap()),
-            Column::new(CellPosition::new_from_number(1, 0).unwrap()),
-            Column::new(CellPosition::new_from_number(2, 0).unwrap()),
-            Column::new(CellPosition::new_from_number(3, 0).unwrap()),
-            Column::new(CellPosition::new_from_number(4, 0).unwrap()),
-            Column::new(CellPosition::new_from_number(5, 0).unwrap()),
-            Column::new(CellPosition::new_from_number(6, 0).unwrap()),
-            Column::new(CellPosition::new_from_number(7, 0).unwrap()),
-            Column::new(CellPosition::new_from_number(8, 0).unwrap()),
-        ]
+        array![ x => Column::new(CellPosition::new_from_number(x, 0).unwrap()); GAME_SIZE]
     }
 
     /// returns all squares
     pub fn squares() -> [Square; GAME_SIZE] {
-        [
-            Square::new(CellPosition::new_from_number(0, 0).unwrap()),
-            Square::new(CellPosition::new_from_number(3, 0).unwrap()),
-            Square::new(CellPosition::new_from_number(6, 0).unwrap()),
-            Square::new(CellPosition::new_from_number(0, 3).unwrap()),
-            Square::new(CellPosition::new_from_number(3, 3).unwrap()),
-            Square::new(CellPosition::new_from_number(6, 3).unwrap()),
-            Square::new(CellPosition::new_from_number(0, 6).unwrap()),
-            Square::new(CellPosition::new_from_number(3, 6).unwrap()),
-            Square::new(CellPosition::new_from_number(6, 6).unwrap()),
-        ]
+        array![ i => Square::new(CellPosition::new_from_number((i % SQUARE_SIZE)* SQUARE_SIZE, (i / SQUARE_SIZE) * SQUARE_SIZE).unwrap()); GAME_SIZE]
     }
 
     /// Returns the row colum and square at the given position.
@@ -218,9 +197,10 @@ impl Sudoku {
         (Row::new(pos), Column::new(pos), Square::new(pos))
     }
 
+    /// Take an iteractors and collects it and return an Vec sorted by cell number
     fn sorted_cell_by_number(
         &self,
-        it: &mut impl Iterator<Item = CellPosition>,
+        it: impl Iterator<Item = CellPosition>,
     ) -> [Vec<(CellPosition, CellState)>; GAME_SIZE] {
         let mut array = array![Vec::new(); GAME_SIZE];
         for el in it {
@@ -246,22 +226,20 @@ impl Sudoku {
     ) -> Result<VerificationResult, VerificationError> {
         let array = self.sorted_cell_by_number(it);
 
-        let mut complete = true;
+        let mut complete = VerificationResult::Complete;
         for vec in array {
             if vec.len() >= 2 {
                 return Err(Self::report_verification_error_conflict(vec));
             } else if vec.is_empty() {
-                complete = false;
+                complete = VerificationResult::Incomplete;
             }
         }
-        if complete {
-            Ok(VerificationResult::Complete)
-        } else {
-            Ok(VerificationResult::Incomplete)
-        }
+        Ok(complete)
     }
 
     /// take an vector and report the error
+    /// # Panics
+    /// panics if the vector does not have at least two elements
     fn report_verification_error_conflict(
         vec: Vec<(CellPosition, CellState)>,
     ) -> VerificationError {
@@ -305,10 +283,13 @@ impl Sudoku {
     /// - [`VerificationError::HintInconsistency`] if two (or more) hints are in conflict
     /// - [`VerificationError::WrongSolution`] if a hint and a solution or two solutions are conflicting
     /// - [`VerificationError::WrongGuess`] if a guess is conflicting with a solution or an given number
-    fn verify_list_iter(
+    fn verify_list_iter<'a, I>(
         self,
-        list: &mut [impl Iterator<Item = CellPosition>],
-    ) -> Result<VerificationResult, VerificationError> {
+        list: impl IntoIterator<Item = &'a mut I>,
+    ) -> Result<VerificationResult, VerificationError>
+    where
+        I: Iterator<Item = CellPosition> + 'a,
+    {
         let mut verification_result = VerificationResult::Complete;
         for iter in list {
             let res = self.verify_iterator(iter)?;
@@ -333,7 +314,7 @@ impl Sudoku {
 
     fn possibility_iter(
         &self,
-        it: &mut impl Iterator<Item = CellPosition>,
+        it: impl Iterator<Item = CellPosition>,
     ) -> Result<CellPossibilities, VerificationError> {
         let array = self.sorted_cell_by_number(it);
 
@@ -353,9 +334,9 @@ impl Sudoku {
     fn possibility_cell(&self, pos: CellPosition) -> Result<CellPossibilities, VerificationError> {
         let (row, col, square) = Self::row_column_square(pos);
         let filter_cell = |cell_pos: &CellPosition| *cell_pos != pos;
-        Ok(self.possibility_iter(&mut row.filter(filter_cell))?
-            & self.possibility_iter(&mut col.filter(filter_cell))?
-            & self.possibility_iter(&mut square.filter(filter_cell))?)
+        Ok(self.possibility_iter(row.filter(filter_cell))?
+            & self.possibility_iter(col.filter(filter_cell))?
+            & self.possibility_iter(square.filter(filter_cell))?)
     }
 
     /// Create a iterators on all cells
@@ -398,6 +379,42 @@ impl Display for VerificationError {
 }
 
 impl Error for VerificationError {}
+
+/// Error returned by [`Sudoku::solve_back_trace`]
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Ord, Eq, Hash, Serialize, Deserialize)]
+#[non_exhaustive]
+pub enum SolveError {
+    /// Verification error, the grid is inconsistant
+    VerificationError(VerificationError),
+    /// Ther is no solution for this configuration
+    ImpossibleConfiguration,
+}
+
+impl Display for SolveError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::VerificationError(error) => write!(f, "{}", error),
+            Self::ImpossibleConfiguration => {
+                write!(f, "the given configuration has no solution")
+            }
+        }
+    }
+}
+
+impl Error for SolveError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match self {
+            Self::VerificationError(error) => Some(error),
+            Self::ImpossibleConfiguration => None,
+        }
+    }
+}
+
+impl From<VerificationError> for SolveError {
+    fn from(error: VerificationError) -> Self {
+        Self::VerificationError(error)
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Ord, Eq, Hash, Serialize, Deserialize)]
 #[allow(clippy::exhaustive_enums)]
@@ -460,6 +477,8 @@ impl IndexMut<CellPosition> for Sudoku {
     }
 }
 
+//====================================================//
+
 const SPACING_CELL: usize = 1;
 
 #[allow(clippy::cast_possible_truncation)]
@@ -468,44 +487,100 @@ fn size_number(number: usize) -> usize {
     ((number as f64).log10().floor() as usize) + 1
 }
 
-fn write_line_separation(f: &mut Formatter<'_>) -> std::fmt::Result {
+fn write_line_separation_basic(f: &mut Formatter<'_>) -> std::fmt::Result {
+    let line_length = size_number(GAME_SIZE) + SPACING_CELL * 2;
     for _ in 0..GAME_SIZE {
         write!(f, "+")?;
-        write!(
-            f,
-            "{}",
-            "-".repeat(size_number(GAME_SIZE) + SPACING_CELL * 2)
-        )?;
+        write!(f, "{}", "-".repeat(line_length))?;
     }
     writeln!(f, "+")
 }
 
+// ╣ ║ ┐ └ ┴ ┬ ├ ─ ┼ ╩ ╦ ╠ ═ ╬ ╟ ╞ ╡ ╢ ╤ ╧ ╫ ╪
+#[allow(clippy::non_ascii_literal)]
+fn write_line_separation(f: &mut Formatter<'_>, number: usize) -> std::fmt::Result {
+    let (char_left, double_line, char_right, single_cross, double_cross) = if number == 0 {
+        ('╔', true, '╗', '╤', '╦')
+    } else if number == GAME_SIZE {
+        ('╚', true, '╝', '╧', '╩')
+    } else if number % SQUARE_SIZE == 0 {
+        ('╠', true, '╣', '╪', '╬')
+    } else {
+        ('╟', false, '╢', '┼', '╫')
+    };
+    let line_str = if double_line { "═" } else { "─" };
+    let line_length = size_number(GAME_SIZE) + SPACING_CELL * 2;
+    write!(f, "{}", char_left)?;
+    for index in 1..GAME_SIZE {
+        write!(f, "{}", line_str.repeat(line_length))?;
+        let cross_char = if index % SQUARE_SIZE == 0 {
+            double_cross
+        } else {
+            single_cross
+        };
+        write!(f, "{}", cross_char)?;
+    }
+    write!(f, "{}", line_str.repeat(line_length))?;
+    writeln!(f, "{}", char_right)
+}
+
+fn style_cell(cell: &Cell) -> Style {
+    match cell.state() {
+        CellState::Given(_) => Style::new().white(),
+        CellState::SolvedDeduction(_) => Style::new().green(),
+        CellState::SolvedBackTrace(_) => Style::new().green(),
+        CellState::Empty(_) => Style::new().white(),
+        CellState::Guess(_) => Style::new().red().bright(),
+    }
+}
+
+#[allow(clippy::repeat_once)] // because it is a constant that could be not 1.
+fn display_cell_interior(f: &mut Formatter<'_>, cell: &Cell) -> std::fmt::Result {
+    if let Some(number) = cell.state().cell_number() {
+        write!(
+            f,
+            "{}",
+            " ".repeat(SPACING_CELL + size_number(GAME_SIZE) - size_number(number.number()))
+        )?;
+        let style = style_cell(cell);
+        write!(f, "{}{}", style.apply_to(number), " ".repeat(SPACING_CELL))
+    } else {
+        write!(
+            f,
+            "{}",
+            " ".repeat(size_number(GAME_SIZE) + SPACING_CELL * 2)
+        )
+    }
+}
+
 impl Display for Sudoku {
+    #[allow(clippy::non_ascii_literal)]
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        for row in self.data {
-            write_line_separation(f)?;
-            for cell in row {
-                write!(f, "|")?;
-                if let Some(number) = cell.state().cell_number() {
-                    write!(
-                        f,
-                        "{}",
-                        " ".repeat(
-                            SPACING_CELL + size_number(GAME_SIZE) - size_number(number.number())
-                        )
-                    )?;
-                    #[allow(clippy::repeat_once)] // because it is a constant that could be not 1.
-                    write!(f, "{}{}", number, " ".repeat(SPACING_CELL))?;
-                } else {
-                    write!(
-                        f,
-                        "{}",
-                        " ".repeat(size_number(GAME_SIZE) + SPACING_CELL * 2)
-                    )?;
+        if f.sign_minus() {
+            for row in self.data {
+                write_line_separation_basic(f)?;
+                for cell in row {
+                    write!(f, "|")?;
+                    display_cell_interior(f, &cell)?;
                 }
+                writeln!(f, "|")?;
             }
-            writeln!(f, "|")?;
+            write_line_separation_basic(f)
+        } else {
+            for (l_index, row) in self.data.iter().enumerate() {
+                write_line_separation(f, l_index)?;
+                for (index, cell) in row.iter().enumerate() {
+                    let v_line = if index % SQUARE_SIZE == 0 {
+                        '║'
+                    } else {
+                        '│'
+                    };
+                    write!(f, "{}", v_line)?;
+                    display_cell_interior(f, cell)?;
+                }
+                writeln!(f, "║")?;
+            }
+            write_line_separation(f, GAME_SIZE)
         }
-        write_line_separation(f)
     }
 }
