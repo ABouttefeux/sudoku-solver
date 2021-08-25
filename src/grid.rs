@@ -137,7 +137,7 @@ impl Sudoku {
             //TODO better prints
 
             println!("{}", self);
-            console::Term::stderr()
+            console::Term::stdout()
                 .move_cursor_up(GAME_SIZE * 2 + 2)
                 .unwrap();
             let pos = pos_tracker.move_pos(direction);
