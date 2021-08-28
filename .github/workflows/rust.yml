@@ -23,10 +23,10 @@ jobs:
     - name: Install Rust stable toolchain
       uses: actions-rs/toolchain@v1
       with:
-        toolchain: stable
+        toolchain: nightly
     
     - name: Build
-      run: cargo build --all --verbose
+      run: cargo +nightly build --all --verbose
       
     - name: Run tests
-      run: cargo test --all --verbose
+      run: cargo +nightly test --all --verbose

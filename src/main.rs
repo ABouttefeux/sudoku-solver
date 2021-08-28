@@ -8,7 +8,7 @@ fn main() {
 
 fn main_random() {
     let mut rng = thread_rng();
-    let mut sudoku = Sudoku::random(45, &mut rng).unwrap();
+    let mut sudoku = Sudoku::<3>::random(45, &mut rng).unwrap();
 
     println!("{}", sudoku);
     sudoku.try_solve().unwrap();
@@ -21,7 +21,7 @@ fn main_random() {
 }
 
 fn main_predef() {
-    let mut sudoku = Sudoku::new([
+    let mut sudoku = Sudoku::<3>::new([
         [3, 0, 0, 6, 0, 0, 0, 9, 0],
         [0, 4, 0, 0, 2, 0, 0, 5, 0],
         [0, 8, 0, 0, 7, 0, 1, 6, 0],
@@ -37,7 +37,7 @@ fn main_predef() {
     println!();
     println!("{}", sudoku);
 
-    let mut sudoku = Sudoku::new([
+    let mut sudoku = Sudoku::<3>::new([
         [3, 0, 0, 6, 0, 0, 0, 9, 0],
         [0, 4, 0, 0, 2, 0, 0, 5, 0],
         [0, 8, 0, 0, 7, 0, 1, 6, 0],

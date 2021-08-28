@@ -6,27 +6,36 @@ use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, Index, IndexMut};
 use serde::{Deserialize, Serialize};
 
 use crate::cell::CellNumber;
-use crate::GAME_SIZE;
 
 /// Represent the pssibility of number that call can have
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Ord, Eq, Hash, Serialize, Deserialize)]
 // TODO remove pub crate
-pub(crate) struct CellPossibilities {
-    possibility: [bool; GAME_SIZE],
+pub(crate) struct CellPossibilities<const SQUARE_SIZE: usize>
+where
+    [bool; SQUARE_SIZE * SQUARE_SIZE]: Sized,
+{
+    #[serde(bound(
+        serialize = "[bool; SQUARE_SIZE * SQUARE_SIZE]: Serialize",
+        deserialize = "[bool; SQUARE_SIZE * SQUARE_SIZE]: Deserialize<'de>"
+    ))]
+    possibility: [bool; SQUARE_SIZE * SQUARE_SIZE],
 }
 
-impl CellPossibilities {
+impl<const SQUARE_SIZE: usize> CellPossibilities<SQUARE_SIZE>
+where
+    [bool; SQUARE_SIZE * SQUARE_SIZE]: Sized,
+{
     /// Create a new configuration where all the numbers are possible.
     pub const fn new() -> Self {
         Self {
-            possibility: [true; GAME_SIZE],
+            possibility: [true; SQUARE_SIZE * SQUARE_SIZE],
         }
     }
 
     /// Create a new configuration with no possiblity at all.
     pub const fn new_no_possibility() -> Self {
         Self {
-            possibility: [false; GAME_SIZE],
+            possibility: [false; SQUARE_SIZE * SQUARE_SIZE],
         }
     }
 
@@ -49,7 +58,7 @@ impl CellPossibilities {
         self.possibility.iter().filter(|b| **b).count()
     }
 
-    pub fn cell_number(&self) -> Option<CellNumber> {
+    pub fn cell_number(&self) -> Option<CellNumber<SQUARE_SIZE>> {
         let mut number = None;
         for (index, poss) in self.possibility.iter().enumerate() {
             if *poss {
@@ -66,7 +75,7 @@ impl CellPossibilities {
     }
 
     /// returns the possibility as a (sorted) vector
-    pub fn into_vec(self) -> Vec<CellNumber> {
+    pub fn into_vec(self) -> Vec<CellNumber<SQUARE_SIZE>> {
         IntoIterator::into_iter(self.possibility)
             .enumerate()
             .filter_map(|(index, b)| {
@@ -97,21 +106,30 @@ impl CellPossibilities {
 }
 
 //TODO range
-impl Index<CellNumber> for CellPossibilities {
+impl<const SQUARE_SIZE: usize> Index<CellNumber<SQUARE_SIZE>> for CellPossibilities<SQUARE_SIZE>
+where
+    [bool; SQUARE_SIZE * SQUARE_SIZE]: Sized,
+{
     type Output = bool;
 
-    fn index(&self, pos: CellNumber) -> &Self::Output {
+    fn index(&self, pos: CellNumber<SQUARE_SIZE>) -> &Self::Output {
         &self.possibility[pos.number() - 1]
     }
 }
 
-impl IndexMut<CellNumber> for CellPossibilities {
-    fn index_mut(&mut self, pos: CellNumber) -> &mut Self::Output {
+impl<const SQUARE_SIZE: usize> IndexMut<CellNumber<SQUARE_SIZE>> for CellPossibilities<SQUARE_SIZE>
+where
+    [bool; SQUARE_SIZE * SQUARE_SIZE]: Sized,
+{
+    fn index_mut(&mut self, pos: CellNumber<SQUARE_SIZE>) -> &mut Self::Output {
         &mut self.possibility[pos.number() - 1]
     }
 }
 
-impl Default for CellPossibilities {
+impl<const SQUARE_SIZE: usize> Default for CellPossibilities<SQUARE_SIZE>
+where
+    [bool; SQUARE_SIZE * SQUARE_SIZE]: Sized,
+{
     /// Create a [`CellPossibilities`] with all number possible
     /// # Example
     /// ```ignore
@@ -126,7 +144,10 @@ impl Default for CellPossibilities {
     }
 }
 
-impl BitAnd for CellPossibilities {
+impl<const SQUARE_SIZE: usize> BitAnd for CellPossibilities<SQUARE_SIZE>
+where
+    [bool; SQUARE_SIZE * SQUARE_SIZE]: Sized,
+{
     type Output = Self;
 
     fn bitand(mut self, rhs: Self) -> Self::Output {
@@ -135,7 +156,10 @@ impl BitAnd for CellPossibilities {
     }
 }
 
-impl BitAndAssign for CellPossibilities {
+impl<const SQUARE_SIZE: usize> BitAndAssign for CellPossibilities<SQUARE_SIZE>
+where
+    [bool; SQUARE_SIZE * SQUARE_SIZE]: Sized,
+{
     fn bitand_assign(&mut self, rhs: Self) {
         for (b1, b2) in self.iter_mut().zip(rhs.iter()) {
             *b1 &= b2;
@@ -143,7 +167,10 @@ impl BitAndAssign for CellPossibilities {
     }
 }
 
-impl BitOr for CellPossibilities {
+impl<const SQUARE_SIZE: usize> BitOr for CellPossibilities<SQUARE_SIZE>
+where
+    [bool; SQUARE_SIZE * SQUARE_SIZE]: Sized,
+{
     type Output = Self;
 
     fn bitor(mut self, rhs: Self) -> Self::Output {
@@ -152,7 +179,10 @@ impl BitOr for CellPossibilities {
     }
 }
 
-impl BitOrAssign for CellPossibilities {
+impl<const SQUARE_SIZE: usize> BitOrAssign for CellPossibilities<SQUARE_SIZE>
+where
+    [bool; SQUARE_SIZE * SQUARE_SIZE]: Sized,
+{
     fn bitor_assign(&mut self, rhs: Self) {
         for (b1, b2) in self.iter_mut().zip(rhs.iter()) {
             *b1 |= b2;
@@ -160,8 +190,11 @@ impl BitOrAssign for CellPossibilities {
     }
 }
 
-impl From<CellPossibilities> for Vec<CellNumber> {
-    fn from(poss: CellPossibilities) -> Self {
+impl<const SQUARE_SIZE: usize> From<CellPossibilities<SQUARE_SIZE>> for Vec<CellNumber<SQUARE_SIZE>>
+where
+    [bool; SQUARE_SIZE * SQUARE_SIZE]: Sized,
+{
+    fn from(poss: CellPossibilities<SQUARE_SIZE>) -> Self {
         poss.into_vec()
     }
 }

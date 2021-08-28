@@ -3,7 +3,7 @@ mod version_number;
 use crate::grid::{CellPosition, SolveError, Sudoku, VerificationError, VerificationResult};
 
 #[test]
-fn sudoku_solving_deducation() -> Result<(), SolveError> {
+fn sudoku_solving_deducation() -> Result<(), SolveError<3>> {
     let mut sudoku = Sudoku::new([
         [3, 0, 0, 6, 0, 0, 0, 9, 0],
         [0, 4, 0, 0, 2, 0, 0, 5, 0],
@@ -47,7 +47,7 @@ fn sudoku_solving_deducation() -> Result<(), SolveError> {
 }
 
 #[test]
-fn sudoku_solving_back_trace() -> Result<(), SolveError> {
+fn sudoku_solving_back_trace() -> Result<(), SolveError<3>> {
     let mut sudoku = Sudoku::new([
         [3, 0, 0, 6, 0, 0, 0, 9, 0],
         [0, 4, 0, 0, 2, 0, 0, 5, 0],

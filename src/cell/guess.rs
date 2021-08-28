@@ -3,19 +3,24 @@ use serde::{Deserialize, Serialize};
 use super::{CellNumber, CellPossibilities};
 
 /// manage the guess for a cell using the backtracing algorithme
-#[derive(
-    Debug, Clone, Copy, PartialEq, PartialOrd, Ord, Eq, Hash, Serialize, Deserialize, Default,
-)]
-pub(crate) struct CellGuess {
-    number: Option<CellNumber>,
-    possibility: CellPossibilities,
+#[derive(Debug, Clone, PartialEq, PartialOrd, Ord, Eq, Hash, Default)]
+//TODO Serialize, Deserialize, 
+pub(crate) struct CellGuess<const SQUARE_SIZE: usize>
+where
+    [bool; SQUARE_SIZE * SQUARE_SIZE]: Sized,
+{
+    number: Option<CellNumber<SQUARE_SIZE>>,
+    possibility: CellPossibilities<SQUARE_SIZE>,
 }
 
-impl CellGuess {
+impl<const SQUARE_SIZE: usize> CellGuess<SQUARE_SIZE>
+where
+    [bool; SQUARE_SIZE * SQUARE_SIZE]: Sized,
+{
     /// Create a new guess from a list of possibility.
     /// Use the first possibility as guess
     /// TODO # Example
-    pub fn new(possibility: CellPossibilities) -> Option<Self> {
+    pub fn new(possibility: CellPossibilities<SQUARE_SIZE>) -> Option<Self> {
         for (index, b) in possibility.iter().enumerate() {
             if *b {
                 let number = CellNumber::new(index + 1);
@@ -32,7 +37,7 @@ impl CellGuess {
     }
 
     /// mut self to give the next guess
-    pub fn next_guess(&mut self) -> Option<CellNumber> {
+    pub fn next_guess(&mut self) -> Option<CellNumber<SQUARE_SIZE>> {
         if let Some(number) = self.number {
             for (index, b) in self.possibility.iter().enumerate().skip(number.number()) {
                 if *b {
@@ -53,7 +58,7 @@ impl CellGuess {
     }
 
     /// Get the number guessed or None is there is no more possible guess
-    pub const fn cell_number(&self) -> Option<CellNumber> {
+    pub const fn cell_number(&self) -> Option<CellNumber<SQUARE_SIZE>> {
         self.number
     }
 }

@@ -4,17 +4,16 @@ use serde::{Deserialize, Serialize};
 
 use crate::grid::{CellCoordinate, CellPosition};
 use crate::private::Sealed;
-use crate::{GAME_SIZE, SQUARE_SIZE};
 
 /// Row iterator of a [`crate::grid::Sudoku`]. It iterate over the first coordinate.
 #[derive(Debug, Clone, PartialEq, PartialOrd, Ord, Eq, Hash, Serialize, Deserialize, Default)]
-pub struct Row {
-    position: Option<CellPosition>,
+pub struct Row<const SQUARE_SIZE: usize> {
+    position: Option<CellPosition<SQUARE_SIZE>>,
 }
 
-impl Row {
+impl<const SQUARE_SIZE: usize> Row<SQUARE_SIZE> {
     /// Create a iterator of the row at the given position.
-    pub fn new(position: CellPosition) -> Self {
+    pub fn new(position: CellPosition<SQUARE_SIZE>) -> Self {
         let top_pos = CellPosition::new(CellCoordinate::new(0).unwrap(), position.y());
         Self {
             position: Some(top_pos),
@@ -22,8 +21,8 @@ impl Row {
     }
 }
 
-impl Iterator for Row {
-    type Item = CellPosition;
+impl<const SQUARE_SIZE: usize> Iterator for Row<SQUARE_SIZE> {
+    type Item = CellPosition<SQUARE_SIZE>;
 
     fn next(&mut self) -> Option<Self::Item> {
         match self.position {
@@ -41,24 +40,26 @@ impl Iterator for Row {
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let number = self.position.map_or(0, |pos| GAME_SIZE - pos.x_usize());
+        let number = self
+            .position
+            .map_or(0, |pos| SQUARE_SIZE.pow(2) - pos.x_usize());
         (number, Some(number))
     }
 }
 
-impl ExactSizeIterator for Row {}
+impl<const SQUARE_SIZE: usize> ExactSizeIterator for Row<SQUARE_SIZE> {}
 
-impl FusedIterator for Row {}
+impl<const SQUARE_SIZE: usize> FusedIterator for Row<SQUARE_SIZE> {}
 
 #[derive(Debug, Clone, PartialEq, PartialOrd, Ord, Eq, Hash, Serialize, Deserialize, Default)]
 /// Column iterator of a [`crate::grid::Sudoku`]. It iterate over the second coordinate.
-pub struct Column {
-    position: Option<CellPosition>,
+pub struct Column<const SQUARE_SIZE: usize> {
+    position: Option<CellPosition<SQUARE_SIZE>>,
 }
 
-impl Column {
+impl<const SQUARE_SIZE: usize> Column<SQUARE_SIZE> {
     /// Create a iterator of the column at the given position.
-    pub fn new(position: CellPosition) -> Self {
+    pub fn new(position: CellPosition<SQUARE_SIZE>) -> Self {
         let left_pos = CellPosition::new(position.x(), CellCoordinate::new(0).unwrap());
         Self {
             position: Some(left_pos),
@@ -66,8 +67,8 @@ impl Column {
     }
 }
 
-impl Iterator for Column {
-    type Item = CellPosition;
+impl<const SQUARE_SIZE: usize> Iterator for Column<SQUARE_SIZE> {
+    type Item = CellPosition<SQUARE_SIZE>;
 
     fn next(&mut self) -> Option<Self::Item> {
         match self.position {
@@ -85,24 +86,26 @@ impl Iterator for Column {
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let number = self.position.map_or(0, |pos| GAME_SIZE - pos.y_usize());
+        let number = self
+            .position
+            .map_or(0, |pos| SQUARE_SIZE.pow(2) - pos.y_usize());
         (number, Some(number))
     }
 }
 
-impl ExactSizeIterator for Column {}
+impl<const SQUARE_SIZE: usize> ExactSizeIterator for Column<SQUARE_SIZE> {}
 
-impl FusedIterator for Column {}
+impl<const SQUARE_SIZE: usize> FusedIterator for Column<SQUARE_SIZE> {}
 
 #[derive(Debug, Clone, PartialEq, PartialOrd, Ord, Eq, Hash, Serialize, Deserialize, Default)]
 /// Square iterator of a [`crate::grid::Sudoku`].
-pub struct Square {
-    position: Option<CellPosition>,
+pub struct Square<const SQUARE_SIZE: usize> {
+    position: Option<CellPosition<SQUARE_SIZE>>,
 }
 
-impl Square {
+impl<const SQUARE_SIZE: usize> Square<SQUARE_SIZE> {
     /// Create a iterator of the square at the given position.
-    pub fn new(position: CellPosition) -> Self {
+    pub fn new(position: CellPosition<SQUARE_SIZE>) -> Self {
         let x_pos = (position.x_usize() / SQUARE_SIZE) * SQUARE_SIZE;
         let y_pos = (position.y_usize() / SQUARE_SIZE) * SQUARE_SIZE;
         // x and y are always valide pos
@@ -116,8 +119,8 @@ impl Square {
     }
 }
 
-impl Iterator for Square {
-    type Item = CellPosition;
+impl<const SQUARE_SIZE: usize> Iterator for Square<SQUARE_SIZE> {
+    type Item = CellPosition<SQUARE_SIZE>;
 
     fn next(&mut self) -> Option<Self::Item> {
         match self.position {
@@ -147,26 +150,30 @@ impl Iterator for Square {
 
     fn size_hint(&self) -> (usize, Option<usize>) {
         let number = self.position.map_or(0, |pos| {
-            GAME_SIZE - (pos.x_usize() % SQUARE_SIZE) + SQUARE_SIZE * (pos.y_usize() % SQUARE_SIZE)
+            SQUARE_SIZE.pow(2) - (pos.x_usize() % SQUARE_SIZE)
+                + SQUARE_SIZE * (pos.y_usize() % SQUARE_SIZE)
         });
         (number, Some(number))
     }
 }
 
-impl ExactSizeIterator for Square {}
+impl<const SQUARE_SIZE: usize> ExactSizeIterator for Square<SQUARE_SIZE> {}
 
-impl FusedIterator for Square {}
+impl<const SQUARE_SIZE: usize> FusedIterator for Square<SQUARE_SIZE> {}
 
 /// This trait cannot be implemented outside the crate as
 /// it depend on a the Sealed which is private
-pub trait SudokuIter: Sealed + Iterator<Item = CellPosition> {}
+pub trait SudokuIter<const SQUARE_SIZE: usize>:
+    Sealed + Iterator<Item = CellPosition<SQUARE_SIZE>>
+{
+}
 
-impl Sealed for Row {}
-impl SudokuIter for Row {}
-impl Sealed for Column {}
-impl SudokuIter for Column {}
-impl Sealed for Square {}
-impl SudokuIter for Square {}
+impl<const SQUARE_SIZE: usize> Sealed for Row<SQUARE_SIZE> {}
+impl<const SQUARE_SIZE: usize> SudokuIter<SQUARE_SIZE> for Row<SQUARE_SIZE> {}
+impl<const SQUARE_SIZE: usize> Sealed for Column<SQUARE_SIZE> {}
+impl<const SQUARE_SIZE: usize> SudokuIter<SQUARE_SIZE> for Column<SQUARE_SIZE> {}
+impl<const SQUARE_SIZE: usize> Sealed for Square<SQUARE_SIZE> {}
+impl<const SQUARE_SIZE: usize> SudokuIter<SQUARE_SIZE> for Square<SQUARE_SIZE> {}
 
 #[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Ord, Eq, Hash, Serialize, Deserialize)]
 enum ElementTracker<T> {
@@ -188,11 +195,11 @@ pub enum Direction {
 /// An iterator that can move forward or backwward.
 /// It is used to track the position in the back trace method
 #[derive(Debug, Clone, PartialEq, PartialOrd, Ord, Eq, Hash, Serialize, Deserialize)]
-pub struct BackTracePositionTracker {
-    el: ElementTracker<CellPosition>,
+pub struct BackTracePositionTracker<const SQUARE_SIZE: usize> {
+    el: ElementTracker<CellPosition<SQUARE_SIZE>>,
 }
 
-impl BackTracePositionTracker {
+impl<const SQUARE_SIZE: usize> BackTracePositionTracker<SQUARE_SIZE> {
     /// Create a new tracker stating on the fist ellement
     /// # Example
     /// ```
@@ -210,18 +217,18 @@ impl BackTracePositionTracker {
     }
 
     /// Get the next position see [`BackTracePositionTracker::move_pos`]
-    pub fn next_element(&mut self) -> Option<CellPosition> {
+    pub fn next_element(&mut self) -> Option<CellPosition<SQUARE_SIZE>> {
         self.move_pos(Direction::Forward)
     }
 
     /// Get the previous position, see [`BackTracePositionTracker::move_pos`]
-    pub fn previous(&mut self) -> Option<CellPosition> {
+    pub fn previous(&mut self) -> Option<CellPosition<SQUARE_SIZE>> {
         self.move_pos(Direction::Backward)
     }
 
     /// Move the position in a certain direction.
     /// Returns [`None`] if at the end of the configuration
-    pub fn move_pos(&mut self, d: Direction) -> Option<CellPosition> {
+    pub fn move_pos(&mut self, d: Direction) -> Option<CellPosition<SQUARE_SIZE>> {
         match self.el {
             ElementTracker::First => match d {
                 Direction::Forward => {
@@ -257,7 +264,7 @@ impl BackTracePositionTracker {
                             Some(*pos)
                         }
                         None => {
-                            let x = GAME_SIZE - 1;
+                            let x = SQUARE_SIZE.pow(2) - 1;
                             let y = pos.y_usize().checked_sub(1);
                             match y {
                                 Some(y) => {
@@ -277,7 +284,11 @@ impl BackTracePositionTracker {
             ElementTracker::Last => match d {
                 Direction::Forward => None,
                 Direction::Backward => {
-                    let pos = CellPosition::new_from_number(GAME_SIZE - 1, GAME_SIZE - 1).unwrap();
+                    let pos = CellPosition::new_from_number(
+                        SQUARE_SIZE.pow(2) - 1,
+                        SQUARE_SIZE.pow(2) - 1,
+                    )
+                    .unwrap();
                     self.el = ElementTracker::Element(pos);
                     Some(pos)
                 }
@@ -286,8 +297,8 @@ impl BackTracePositionTracker {
     }
 }
 
-impl Iterator for BackTracePositionTracker {
-    type Item = CellPosition;
+impl<const SQUARE_SIZE: usize> Iterator for BackTracePositionTracker<SQUARE_SIZE> {
+    type Item = CellPosition<SQUARE_SIZE>;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.next_element()
@@ -298,7 +309,7 @@ impl Iterator for BackTracePositionTracker {
     }
 }
 
-impl Default for BackTracePositionTracker {
+impl<const SQUARE_SIZE: usize> Default for BackTracePositionTracker<SQUARE_SIZE> {
     fn default() -> Self {
         Self::new()
     }
@@ -310,6 +321,7 @@ mod test {
 
     #[test]
     fn back_trace_iter_basic() {
+        const GAME_SIZE: usize = 9;
         let mut iter = BackTracePositionTracker::new();
         assert_eq!(iter.next(), CellPosition::new_from_number(0, 0));
         assert_eq!(iter.next(), CellPosition::new_from_number(1, 0));
@@ -323,6 +335,7 @@ mod test {
 
     #[test]
     fn back_trace_iter_extensive() {
+        const GAME_SIZE: usize = 9;
         let mut iter = BackTracePositionTracker::new();
         for y in 0..GAME_SIZE {
             for x in 0..GAME_SIZE {

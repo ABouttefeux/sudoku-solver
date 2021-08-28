@@ -6,7 +6,6 @@ use std::fmt::{Binary, Display, Formatter, LowerHex, Octal, UpperHex};
 use serde::{Deserialize, Serialize};
 
 use crate::error::SetError;
-use crate::GAME_SIZE;
 
 mod possibility;
 pub(crate) use possibility::*;
@@ -14,25 +13,33 @@ mod guess;
 pub(crate) use guess::*;
 
 /// Represent cell sate, including the storage of data while solving the configuration
-#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Ord, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, PartialOrd, Ord, Eq, Hash)]
 #[allow(clippy::exhaustive_enums)]
 // TODO remove pub crate
-pub(crate) enum CellState {
+//TODO Serialize, Deserialize, 
+
+pub(crate) enum CellState<const SQUARE_SIZE: usize>
+where
+    [bool; SQUARE_SIZE * SQUARE_SIZE]: Sized,
+{
     /// Cell number that is given
-    Given(CellNumber),
+    Given(CellNumber<SQUARE_SIZE>),
     /// Cell number that has been solved, kowning exactly the value
-    SolvedDeduction(CellNumber),
+    SolvedDeduction(CellNumber<SQUARE_SIZE>),
     /// Cell number that have been solve with backtrace
-    SolvedBackTrace(CellNumber),
+    SolvedBackTrace(CellNumber<SQUARE_SIZE>),
     /// Unsolved cell containing possibilities
-    Empty(Option<CellPossibilities>),
+    Empty(Option<CellPossibilities<SQUARE_SIZE>>),
     /// Value tried
-    Guess(CellGuess),
+    Guess(CellGuess<SQUARE_SIZE>),
 }
 
-impl CellState {
+impl<const SQUARE_SIZE: usize> CellState<SQUARE_SIZE>
+where
+    [bool; SQUARE_SIZE * SQUARE_SIZE]: Sized,
+{
     /// Get the cell number of this cell
-    pub fn cell_number(&self) -> Option<CellNumber> {
+    pub fn cell_number(&self) -> Option<CellNumber<SQUARE_SIZE>> {
         match self {
             Self::Given(number) | Self::SolvedDeduction(number) | Self::SolvedBackTrace(number) => {
                 Some(*number)
@@ -43,7 +50,7 @@ impl CellState {
     }
 
     /// Create eithen a given or an empty configurazion
-    pub const fn new(nb: Option<CellNumber>) -> Self {
+    pub const fn new(nb: Option<CellNumber<SQUARE_SIZE>>) -> Self {
         match nb {
             Some(nb) => Self::Given(nb),
             None => Self::Empty(None),
@@ -51,7 +58,10 @@ impl CellState {
     }
 }
 
-impl Default for CellState {
+impl<const SQUARE_SIZE: usize> Default for CellState<SQUARE_SIZE>
+where
+    [bool; SQUARE_SIZE * SQUARE_SIZE]: Sized,
+{
     fn default() -> Self {
         Self::Empty(None)
     }
@@ -92,40 +102,72 @@ impl Default for CellState {
 // }
 
 /// Reprensent a cell in a [`crate::grid::Sudoku`]
-#[derive(
-    Debug, Clone, Copy, PartialEq, PartialOrd, Ord, Eq, Hash, Serialize, Deserialize, Default,
-)]
-pub struct Cell {
-    state: CellState,
+#[derive(Debug, Clone, PartialEq, PartialOrd, Ord, Eq, Hash, Default)]
+//TODO Serialize, Deserialize, 
+
+pub struct Cell<const SQUARE_SIZE: usize>
+where
+    [bool; SQUARE_SIZE * SQUARE_SIZE]: Sized,
+{
+    state: CellState<SQUARE_SIZE>,
 }
 
-impl Cell {
+impl<const SQUARE_SIZE: usize> Cell<SQUARE_SIZE>
+where
+    [bool; SQUARE_SIZE * SQUARE_SIZE]: Sized,
+{
     /// Create a new cell with a given [`CellState`]
-    pub(crate) const fn new(state: CellState) -> Self {
+    pub(crate) const fn new(state: CellState<SQUARE_SIZE>) -> Self {
         Self { state }
     }
 
     //TODO remove pub
     /// Getter on the state
-    pub(crate) const fn state(&self) -> CellState {
-        self.state
+    pub(crate) const fn state(&self) -> &CellState<SQUARE_SIZE> {
+        &self.state
     }
 
     //TODO remove pub
     /// mut ref to the sate
-    pub(crate) fn state_mut(&mut self) -> &mut CellState {
+    pub(crate) fn state_mut(&mut self) -> &mut CellState<SQUARE_SIZE> {
         &mut self.state
+    }
+
+    /// Create eithen a given or an empty configurazion
+    pub const fn new_opt(nb: Option<CellNumber<SQUARE_SIZE>>) -> Self {
+        Self {
+            state: CellState::new(nb),
+        }
+    }
+
+    /// Create a new empty cell
+    pub const fn new_empty() -> Self {
+        Self {
+            state: CellState::Empty(None),
+        }
+    }
+
+    /// Create a cell with a given hint
+    pub const fn new_hint(hint: CellNumber<SQUARE_SIZE>) -> Self {
+        Self {
+            state: CellState::Given(hint),
+        }
+    }
+
+    /// Return the cell number or None if it is empty
+    pub fn cell_number(&self) -> Option<CellNumber<SQUARE_SIZE>> {
+        self.state().cell_number()
     }
 }
 
 /// Represent a number that a cell can hold. Can only hold 1 thought 9
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Ord, Eq, Hash, Serialize, Deserialize)]
-pub struct CellNumber {
+pub struct CellNumber<const SQUARE_SIZE: usize> {
     number: usize,
 }
 // TODO u8 ?
 
-impl CellNumber {
+impl<const SQUARE_SIZE: usize> CellNumber<SQUARE_SIZE> {
     /// Test if the given value is in bounds
     /// # Example
     /// ```
@@ -142,7 +184,7 @@ impl CellNumber {
     /// assert!(!CellNumber::is_in_bound(GAME_SIZE + 100));
     /// ```
     pub const fn is_in_bound(number: usize) -> bool {
-        number <= GAME_SIZE && number > 0
+        number <= SQUARE_SIZE.pow(2) && number > 0
     }
 
     /// Create a new cell number. the input should be <= [`GAME_SIZE`] otherwise return [`None`]
@@ -216,7 +258,7 @@ impl CellNumber {
     }
 }
 
-impl Default for CellNumber {
+impl<const SQUARE_SIZE: usize> Default for CellNumber<SQUARE_SIZE> {
     /// Create a [`CellNumber`] with value 1
     /// # Example
     /// ```
@@ -229,31 +271,31 @@ impl Default for CellNumber {
     }
 }
 
-impl Display for CellNumber {
+impl<const SQUARE_SIZE: usize> Display for CellNumber<SQUARE_SIZE> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.number)
     }
 }
 
-impl Binary for CellNumber {
+impl<const SQUARE_SIZE: usize> Binary for CellNumber<SQUARE_SIZE> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:b}", self.number)
     }
 }
 
-impl UpperHex for CellNumber {
+impl<const SQUARE_SIZE: usize> UpperHex for CellNumber<SQUARE_SIZE> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:X}", self.number)
     }
 }
 
-impl LowerHex for CellNumber {
+impl<const SQUARE_SIZE: usize> LowerHex for CellNumber<SQUARE_SIZE> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:x}", self.number)
     }
 }
 
-impl Octal for CellNumber {
+impl<const SQUARE_SIZE: usize> Octal for CellNumber<SQUARE_SIZE> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:o}", self.number)
     }
