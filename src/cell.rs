@@ -13,11 +13,9 @@ mod guess;
 pub(crate) use guess::*;
 
 /// Represent cell sate, including the storage of data while solving the configuration
-#[derive(Debug, Clone, PartialEq, PartialOrd, Ord, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, PartialOrd, Ord, Eq, Hash, Serialize, Deserialize)]
 #[allow(clippy::exhaustive_enums)]
 // TODO remove pub crate
-//TODO Serialize, Deserialize,
-
 pub(crate) enum CellState<const SQUARE_SIZE: usize>
 where
     [bool; SQUARE_SIZE * SQUARE_SIZE]: Sized,
@@ -29,8 +27,16 @@ where
     /// Cell number that have been solve with backtrace
     SolvedBackTrace(CellNumber<SQUARE_SIZE>),
     /// Unsolved cell containing possibilities
+    #[serde(bound(
+        serialize = "CellPossibilities<SQUARE_SIZE>: Serialize",
+        deserialize = "CellPossibilities<SQUARE_SIZE>: Deserialize<'de>"
+    ))]
     Empty(Option<CellPossibilities<SQUARE_SIZE>>),
     /// Value tried
+    #[serde(bound(
+        serialize = "CellGuess<SQUARE_SIZE>: Serialize",
+        deserialize = "CellGuess<SQUARE_SIZE>: Deserialize<'de>"
+    ))]
     Guess(CellGuess<SQUARE_SIZE>),
 }
 
@@ -102,13 +108,16 @@ where
 // }
 
 /// Reprensent a cell in a [`crate::grid::Sudoku`]
-#[derive(Debug, Clone, PartialEq, PartialOrd, Ord, Eq, Hash, Default)]
-//TODO Serialize, Deserialize,
+#[derive(Debug, Clone, PartialEq, PartialOrd, Ord, Eq, Hash, Default, Serialize, Deserialize)]
 
 pub struct Cell<const SQUARE_SIZE: usize>
 where
     [bool; SQUARE_SIZE * SQUARE_SIZE]: Sized,
 {
+    #[serde(bound(
+        serialize = "[bool; SQUARE_SIZE * SQUARE_SIZE]: Serialize",
+        deserialize = "[bool; SQUARE_SIZE * SQUARE_SIZE]: Deserialize<'de>"
+    ))]
     state: CellState<SQUARE_SIZE>,
 }
 

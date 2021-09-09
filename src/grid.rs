@@ -27,6 +27,7 @@ pub use position::*;
 // }
 
 #[derive(Debug, Clone, PartialEq, PartialOrd, Ord, Eq, Hash, Serialize, Deserialize)]
+#[allow(clippy::type_repetition_in_bounds)]
 /// Represent the grid with the cell and the current game state
 pub struct Sudoku<const SQUARE_SIZE: usize>
 where
@@ -146,10 +147,10 @@ where
         loop {
             //TODO better prints
 
-            println!("{}", self);
-            console::Term::stdout()
-                .move_cursor_up(SQUARE_SIZE.pow(2) * 2 + 2)
-                .unwrap();
+            // println!("{}", self);
+            // console::Term::stdout()
+            //     .move_cursor_up(SQUARE_SIZE.pow(2) * 2 + 2)
+            //     .unwrap();
             let pos = pos_tracker.move_pos(direction);
             match pos {
                 Some(pos) => match self[pos].state_mut() {
@@ -619,7 +620,7 @@ where
                 write_line_separation_basic::<SQUARE_SIZE>(f)?;
                 for cell in row {
                     write!(f, "|")?;
-                    display_cell_interior::<SQUARE_SIZE>(f, &cell)?;
+                    display_cell_interior::<SQUARE_SIZE>(f, cell)?;
                 }
                 writeln!(f, "|")?;
             }

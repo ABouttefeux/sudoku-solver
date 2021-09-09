@@ -3,13 +3,17 @@ use serde::{Deserialize, Serialize};
 use super::{CellNumber, CellPossibilities};
 
 /// manage the guess for a cell using the backtracing algorithme
-#[derive(Debug, Clone, PartialEq, PartialOrd, Ord, Eq, Hash, Default)]
-//TODO Serialize, Deserialize,
+#[derive(Debug, Clone, PartialEq, PartialOrd, Ord, Eq, Hash, Default, Serialize, Deserialize)]
+//TODO , Deserialize,
 pub(crate) struct CellGuess<const SQUARE_SIZE: usize>
 where
     [bool; SQUARE_SIZE * SQUARE_SIZE]: Sized,
 {
     number: Option<CellNumber<SQUARE_SIZE>>,
+    #[serde(bound(
+        serialize = "CellPossibilities<SQUARE_SIZE>: Serialize",
+        deserialize = "CellPossibilities<SQUARE_SIZE>: Deserialize<'de>"
+    ))]
     possibility: CellPossibilities<SQUARE_SIZE>,
 }
 
