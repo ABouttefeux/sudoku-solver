@@ -4,7 +4,7 @@ use crate::grid::{CellPosition, SolveError, Sudoku, VerificationError, Verificat
 
 #[test]
 fn sudoku_solving_deducation() -> Result<(), SolveError<3>> {
-    let mut sudoku = Sudoku::new([
+    let mut sudoku = Sudoku::<3>::new([
         [3, 0, 0, 6, 0, 0, 0, 9, 0],
         [0, 4, 0, 0, 2, 0, 0, 5, 0],
         [0, 8, 0, 0, 7, 0, 1, 6, 0],
@@ -43,12 +43,53 @@ fn sudoku_solving_deducation() -> Result<(), SolveError<3>> {
         }
     }
 
+    //-----------------------
+
+    let mut sudoku = Sudoku::<3>::new([
+        [5, 3, 0, 0, 7, 0, 0, 0, 0],
+        [6, 0, 0, 1, 9, 5, 0, 0, 0],
+        [0, 9, 8, 0, 0, 0, 0, 6, 0],
+        [8, 0, 0, 0, 6, 0, 0, 0, 3],
+        [4, 0, 0, 8, 0, 3, 0, 0, 1],
+        [7, 0, 0, 0, 2, 0, 0, 0, 6],
+        [0, 6, 0, 0, 0, 0, 2, 8, 0],
+        [0, 0, 0, 4, 1, 9, 0, 0, 5],
+        [0, 0, 0, 0, 8, 0, 0, 7, 9],
+    ]);
+
+    let sudoku_solution = Sudoku::new([
+        [5, 3, 4, 6, 7, 8, 9, 1, 2],
+        [6, 7, 2, 1, 9, 5, 3, 4, 8],
+        [1, 9, 8, 3, 4, 2, 5, 6, 7],
+        [8, 5, 9, 7, 6, 1, 4, 2, 3],
+        [4, 2, 6, 8, 5, 3, 7, 9, 1],
+        [7, 1, 3, 9, 2, 4, 8, 5, 6],
+        [9, 6, 1, 5, 3, 7, 2, 8, 4],
+        [2, 8, 7, 4, 1, 9, 6, 3, 5],
+        [3, 4, 5, 2, 8, 6, 1, 7, 9],
+    ]);
+    match sudoku_solution.verify_configuration()? {
+        VerificationResult::Incomplete => panic!("solution config incomplete"),
+        VerificationResult::Complete => {}
+    }
+
+    match sudoku.try_solve()? {
+        VerificationResult::Incomplete => panic!("config incomplete"),
+        VerificationResult::Complete => {}
+    }
+
+    for (cell_left, cell_right) in sudoku.iter().zip(sudoku_solution.iter()) {
+        if cell_left.state().cell_number() != cell_right.state().cell_number() {
+            panic!("error cell not equal");
+        }
+    }
+
     Ok(())
 }
 
 #[test]
 fn sudoku_solving_back_trace() -> Result<(), SolveError<3>> {
-    let mut sudoku = Sudoku::new([
+    let mut sudoku = Sudoku::<3>::new([
         [3, 0, 0, 6, 0, 0, 0, 9, 0],
         [0, 4, 0, 0, 2, 0, 0, 5, 0],
         [0, 8, 0, 0, 7, 0, 1, 6, 0],
@@ -84,12 +125,50 @@ fn sudoku_solving_back_trace() -> Result<(), SolveError<3>> {
         }
     }
 
+    //--------------------------
+
+    let mut sudoku = Sudoku::<3>::new([
+        [5, 3, 0, 0, 7, 0, 0, 0, 0],
+        [6, 0, 0, 1, 9, 5, 0, 0, 0],
+        [0, 9, 8, 0, 0, 0, 0, 6, 0],
+        [8, 0, 0, 0, 6, 0, 0, 0, 3],
+        [4, 0, 0, 8, 0, 3, 0, 0, 1],
+        [7, 0, 0, 0, 2, 0, 0, 0, 6],
+        [0, 6, 0, 0, 0, 0, 2, 8, 0],
+        [0, 0, 0, 4, 1, 9, 0, 0, 5],
+        [0, 0, 0, 0, 8, 0, 0, 7, 9],
+    ]);
+
+    let sudoku_solution = Sudoku::new([
+        [5, 3, 4, 6, 7, 8, 9, 1, 2],
+        [6, 7, 2, 1, 9, 5, 3, 4, 8],
+        [1, 9, 8, 3, 4, 2, 5, 6, 7],
+        [8, 5, 9, 7, 6, 1, 4, 2, 3],
+        [4, 2, 6, 8, 5, 3, 7, 9, 1],
+        [7, 1, 3, 9, 2, 4, 8, 5, 6],
+        [9, 6, 1, 5, 3, 7, 2, 8, 4],
+        [2, 8, 7, 4, 1, 9, 6, 3, 5],
+        [3, 4, 5, 2, 8, 6, 1, 7, 9],
+    ]);
+    match sudoku_solution.verify_configuration()? {
+        VerificationResult::Incomplete => panic!("solution config incomplete"),
+        VerificationResult::Complete => {}
+    }
+
+    sudoku.solve_back_trace()?;
+
+    for (cell_left, cell_right) in sudoku.iter().zip(sudoku_solution.iter()) {
+        if cell_left.state().cell_number() != cell_right.state().cell_number() {
+            panic!("error cell not equal");
+        }
+    }
+
     Ok(())
 }
 
 #[test]
 fn sudoku_solving_back_trace_error() {
-    let mut sudoku = Sudoku::new([
+    let mut sudoku = Sudoku::<3>::new([
         [3, 0, 0, 6, 0, 0, 0, 9, 0],
         [0, 4, 0, 0, 2, 0, 0, 5, 0],
         [0, 8, 0, 0, 7, 0, 1, 6, 0],

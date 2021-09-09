@@ -16,7 +16,7 @@ pub(crate) use guess::*;
 #[derive(Debug, Clone, PartialEq, PartialOrd, Ord, Eq, Hash)]
 #[allow(clippy::exhaustive_enums)]
 // TODO remove pub crate
-//TODO Serialize, Deserialize, 
+//TODO Serialize, Deserialize,
 
 pub(crate) enum CellState<const SQUARE_SIZE: usize>
 where
@@ -103,7 +103,7 @@ where
 
 /// Reprensent a cell in a [`crate::grid::Sudoku`]
 #[derive(Debug, Clone, PartialEq, PartialOrd, Ord, Eq, Hash, Default)]
-//TODO Serialize, Deserialize, 
+//TODO Serialize, Deserialize,
 
 pub struct Cell<const SQUARE_SIZE: usize>
 where
@@ -172,16 +172,17 @@ impl<const SQUARE_SIZE: usize> CellNumber<SQUARE_SIZE> {
     /// # Example
     /// ```
     /// use sudoku::cell::CellNumber;
-    /// use sudoku::GAME_SIZE;
+    ///
+    /// const GAME_SIZE: usize = 9;
     ///
     /// // in bounds
-    /// assert!(CellNumber::is_in_bound(1));
-    /// assert!(CellNumber::is_in_bound(GAME_SIZE - 1));
-    /// assert!(CellNumber::is_in_bound(GAME_SIZE));
+    /// assert!(CellNumber::<3>::is_in_bound(1));
+    /// assert!(CellNumber::<3>::is_in_bound(GAME_SIZE - 1));
+    /// assert!(CellNumber::<3>::is_in_bound(GAME_SIZE));
     ///
     /// // not in bounds
-    /// assert!(!CellNumber::is_in_bound(0));
-    /// assert!(!CellNumber::is_in_bound(GAME_SIZE + 100));
+    /// assert!(!CellNumber::<3>::is_in_bound(0));
+    /// assert!(!CellNumber::<3>::is_in_bound(GAME_SIZE + 100));
     /// ```
     pub const fn is_in_bound(number: usize) -> bool {
         number <= SQUARE_SIZE.pow(2) && number > 0
@@ -192,11 +193,11 @@ impl<const SQUARE_SIZE: usize> CellNumber<SQUARE_SIZE> {
     /// ```
     /// use sudoku::cell::CellNumber;
     ///
-    /// assert!(CellNumber::new(0).is_none());
-    /// assert!(CellNumber::new(1).is_some());
-    /// assert!(CellNumber::new(8).is_some());
-    /// assert!(CellNumber::new(9).is_some());
-    /// assert!(CellNumber::new(10).is_none());
+    /// assert!(CellNumber::<3>::new(0).is_none());
+    /// assert!(CellNumber::<3>::new(1).is_some());
+    /// assert!(CellNumber::<3>::new(8).is_some());
+    /// assert!(CellNumber::<3>::new(9).is_some());
+    /// assert!(CellNumber::<3>::new(10).is_none());
     /// ```
     pub const fn new(number: usize) -> Option<Self> {
         if Self::is_in_bound(number) {
@@ -214,7 +215,7 @@ impl<const SQUARE_SIZE: usize> CellNumber<SQUARE_SIZE> {
     /// # use std::error::Error;
     ///
     /// # fn main() -> Result<(), Box<dyn Error>> {
-    /// let cell = CellNumber::new(2).ok_or(ExampleError::NoneError)?;
+    /// let cell = CellNumber::<3>::new(2).ok_or(ExampleError::NoneError)?;
     /// assert_eq!(cell.number(), 2);
     /// # Ok(())
     /// # }
@@ -233,7 +234,7 @@ impl<const SQUARE_SIZE: usize> CellNumber<SQUARE_SIZE> {
     /// # use std::error::Error;
     ///
     /// # fn main() -> Result<(), Box<dyn Error>> {
-    /// let mut c = CellNumber::new(1).ok_or(ExampleError::NoneError)?;
+    /// let mut c = CellNumber::<3>::new(1).ok_or(ExampleError::NoneError)?;
     /// c.set_number(2)?; // set is OK()
     /// assert_eq!(c.number(), 2);
     ///
@@ -264,7 +265,7 @@ impl<const SQUARE_SIZE: usize> Default for CellNumber<SQUARE_SIZE> {
     /// ```
     /// use sudoku::cell::CellNumber;
     ///
-    /// assert_eq!(CellNumber::default().number(), 1);
+    /// assert_eq!(CellNumber::<3>::default().number(), 1);
     /// ```
     fn default() -> Self {
         Self::new(1).expect("unreacharble")
@@ -308,12 +309,13 @@ mod test {
 
     #[test]
     fn t_display() {
-        let n = 1;
-        let cell = CellNumber::new(n).unwrap();
-        assert_eq!(format!("{}", cell), format!("{}", n));
-        assert_eq!(format!("{:b}", cell), format!("{:b}", n));
-        assert_eq!(format!("{:X}", cell), format!("{:X}", n));
-        assert_eq!(format!("{:x}", cell), format!("{:x}", n));
-        assert_eq!(format!("{:o}", cell), format!("{:o}", n));
+        for n in 1..=9 {
+            let cell = CellNumber::<3>::new(n).unwrap();
+            assert_eq!(format!("{}", cell), format!("{}", n));
+            assert_eq!(format!("{:b}", cell), format!("{:b}", n));
+            assert_eq!(format!("{:X}", cell), format!("{:X}", n));
+            assert_eq!(format!("{:x}", cell), format!("{:x}", n));
+            assert_eq!(format!("{:o}", cell), format!("{:o}", n));
+        }
     }
 }

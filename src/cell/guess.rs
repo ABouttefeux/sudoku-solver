@@ -4,7 +4,7 @@ use super::{CellNumber, CellPossibilities};
 
 /// manage the guess for a cell using the backtracing algorithme
 #[derive(Debug, Clone, PartialEq, PartialOrd, Ord, Eq, Hash, Default)]
-//TODO Serialize, Deserialize, 
+//TODO Serialize, Deserialize,
 pub(crate) struct CellGuess<const SQUARE_SIZE: usize>
 where
     [bool; SQUARE_SIZE * SQUARE_SIZE]: Sized,
@@ -69,7 +69,7 @@ mod test {
     use crate::cell::{CellGuess, CellNumber, CellPossibilities};
     #[test]
     fn guess() {
-        let mut guess = CellGuess::new(CellPossibilities::new()).unwrap();
+        let mut guess = CellGuess::<3>::new(CellPossibilities::new()).unwrap();
         assert_eq!(guess.cell_number().unwrap(), CellNumber::new(1).unwrap());
         assert_eq!(guess.next_guess().unwrap(), CellNumber::new(2).unwrap());
         assert_eq!(guess.cell_number().unwrap(), CellNumber::new(2).unwrap());
@@ -78,7 +78,7 @@ mod test {
         }
         assert_eq!(guess.next_guess(), None);
 
-        let mut poss = CellPossibilities::new_no_possibility();
+        let mut poss = CellPossibilities::<3>::new_no_possibility();
         assert!(CellGuess::new(poss).is_none());
         poss[CellNumber::new(4).unwrap()] = true;
         let mut guess = CellGuess::new(poss).unwrap();

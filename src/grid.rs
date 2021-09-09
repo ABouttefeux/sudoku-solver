@@ -36,7 +36,6 @@ where
         serialize = "[[Cell<SQUARE_SIZE>; SQUARE_SIZE * SQUARE_SIZE]; SQUARE_SIZE * SQUARE_SIZE]: Serialize",
         deserialize = "[[Cell<SQUARE_SIZE>; SQUARE_SIZE * SQUARE_SIZE]; SQUARE_SIZE * SQUARE_SIZE]: Deserialize<'de>"
     ))]
-
     data: [[Cell<SQUARE_SIZE>; SQUARE_SIZE * SQUARE_SIZE]; SQUARE_SIZE * SQUARE_SIZE],
 }
 
@@ -371,7 +370,9 @@ where
     }
 
     /// Create a iterators on all cells
-    pub fn iter(&self) -> impl Iterator<Item = &Cell<SQUARE_SIZE>> + FusedIterator + DoubleEndedIterator {
+    pub fn iter(
+        &self,
+    ) -> impl Iterator<Item = &Cell<SQUARE_SIZE>> + FusedIterator + DoubleEndedIterator {
         self.data.iter().flatten()
     }
 

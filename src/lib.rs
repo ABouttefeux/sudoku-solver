@@ -36,8 +36,7 @@
 #![warn(rustdoc::missing_crate_level_docs)]
 //#![warn(clippy::missing_docs_in_private_items)]
 //#![doc(test(attr(deny(warnings))))]
-#![feature(const_generics)]
-#![feature(const_evaluatable_checked)]
+#![feature(generic_const_exprs)]
 
 pub mod cell;
 pub mod error;

@@ -205,9 +205,9 @@ impl<const SQUARE_SIZE: usize> BackTracePositionTracker<SQUARE_SIZE> {
     /// ```
     /// use sudoku::grid::{BackTracePositionTracker, CellPosition};
     ///
-    /// let mut iter = BackTracePositionTracker::new();
+    /// let mut iter = BackTracePositionTracker::<3>::new();
     /// assert_eq!(iter.previous(), None);
-    /// let mut iter = BackTracePositionTracker::new();
+    /// let mut iter = BackTracePositionTracker::<3>::new();
     /// assert_eq!(iter.next(), CellPosition::new_from_number(0, 0));
     /// ```
     pub const fn new() -> Self {
@@ -330,13 +330,13 @@ mod test {
             assert!(pos.is_some());
             assert_eq!(iter.next(), pos);
         }
-        assert_eq!(iter.next(), CellPosition::new_from_number(0, 1));
+        assert_eq!(iter.next(), CellPosition::<3>::new_from_number(0, 1));
     }
 
     #[test]
     fn back_trace_iter_extensive() {
         const GAME_SIZE: usize = 9;
-        let mut iter = BackTracePositionTracker::new();
+        let mut iter = BackTracePositionTracker::<3>::new();
         for y in 0..GAME_SIZE {
             for x in 0..GAME_SIZE {
                 let pos = CellPosition::new_from_number(x, y);

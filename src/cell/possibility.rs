@@ -206,7 +206,7 @@ mod test {
 
     #[test]
     fn possibilities() {
-        let poss = CellPossibilities::default();
+        let poss = CellPossibilities::<3>::default();
         assert_eq!(CellPossibilities::new(), poss);
         assert!(poss.iter().all(|el| *el));
     }
