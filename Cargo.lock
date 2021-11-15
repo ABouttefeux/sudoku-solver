@@ -78,9 +78,9 @@ dependencies = [
 
 [[package]]
 name = "conrod_core"
-version = "0.74.0"
+version = "0.76.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cf2cc8a3e312e2f4f73b936b8de729bda6a61310d0e1e59bd5e91feb88f73b0d"
+checksum = "e771d90d3a662af197c2772cdf9d71d858e8a56f06c16fc3c791144340444354"
 dependencies = [
  "conrod_derive",
  "copypasta",
@@ -94,9 +94,9 @@ dependencies = [
 
 [[package]]
 name = "conrod_derive"
-version = "0.74.0"
+version = "0.76.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e19707efa7d816532a5738edce5bfa61912d3d78deb7427ccf3a3f491a5716d0"
+checksum = "1aedfc4d8bd72b652d5e1678dc388627a24307d0d39ad85ab771fe5dbbaddd2f"
 dependencies = [
  "proc-macro2 1.0.28",
  "quote 1.0.9",
