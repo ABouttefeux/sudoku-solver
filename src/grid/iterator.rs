@@ -305,7 +305,14 @@ impl<const SQUARE_SIZE: usize> Iterator for BackTracePositionTracker<SQUARE_SIZE
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        todo!()
+        let size = match self.el {
+            ElementTracker::First => SQUARE_SIZE.pow(4),
+            ElementTracker::Element(el) => {
+                SQUARE_SIZE.pow(4) - 1 - (el.x_usize() * SQUARE_SIZE.pow(2) + el.x_usize())
+            }
+            ElementTracker::Last => 0,
+        };
+        (size, Some(size))
     }
 }
 

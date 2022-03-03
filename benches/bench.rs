@@ -6,7 +6,7 @@ fn criterion_benchmark(c: &mut Criterion) {
     groupe.throughput(Throughput::Elements(1_u64));
     groupe.bench_function("deduction solve given", |b| {
         b.iter(|| {
-            let mut sudoku = Sudoku::new([
+            let mut sudoku = Sudoku::<3>::new([
                 [3, 0, 0, 6, 0, 0, 0, 9, 0],
                 [0, 4, 0, 0, 2, 0, 0, 5, 0],
                 [0, 8, 0, 0, 7, 0, 1, 6, 0],
@@ -23,7 +23,7 @@ fn criterion_benchmark(c: &mut Criterion) {
 
     groupe.bench_function("solve back trace given", |b| {
         b.iter(|| {
-            let mut sudoku = Sudoku::new([
+            let mut sudoku = Sudoku::<3>::new([
                 [3, 0, 0, 6, 0, 0, 0, 9, 0],
                 [0, 4, 0, 0, 2, 0, 0, 5, 0],
                 [0, 8, 0, 0, 7, 0, 1, 6, 0],

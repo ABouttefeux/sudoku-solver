@@ -27,7 +27,6 @@ pub use position::*;
 // }
 
 #[derive(Debug, Clone, PartialEq, PartialOrd, Ord, Eq, Hash, Serialize, Deserialize)]
-#[allow(clippy::type_repetition_in_bounds)]
 /// Represent the grid with the cell and the current game state
 pub struct Sudoku<const SQUARE_SIZE: usize>
 where
@@ -39,7 +38,6 @@ where
     ))]
     data: [[Cell<SQUARE_SIZE>; SQUARE_SIZE * SQUARE_SIZE]; SQUARE_SIZE * SQUARE_SIZE],
 }
-
 // #[derive(
 //     Debug, Clone, Copy, PartialEq, PartialOrd, Ord, Eq, Hash, Serialize, Deserialize,
 // )]
@@ -52,6 +50,7 @@ where
     [[Cell<SQUARE_SIZE>; SQUARE_SIZE * SQUARE_SIZE]; SQUARE_SIZE * SQUARE_SIZE]: Sized,
 {
     /// Create a configuration with the given array, number 0 ore >= 10 are replaces by empty cells.
+    #[allow(clippy::semicolon_if_nothing_returned)] // false positive
     pub fn new(input: [[usize; SQUARE_SIZE * SQUARE_SIZE]; SQUARE_SIZE * SQUARE_SIZE]) -> Self {
         Self {
             data: array![
@@ -71,6 +70,7 @@ where
             None
         } else {
             let distribution = Uniform::new(0, SQUARE_SIZE.pow(2));
+            #[allow(clippy::semicolon_if_nothing_returned)] // false positive
             let data = array![array![Cell::new(CellState::Empty(None)); SQUARE_SIZE * SQUARE_SIZE];
                 SQUARE_SIZE * SQUARE_SIZE];
             let mut sudoku = Self { data };
@@ -111,31 +111,96 @@ where
     /// return an error if there is an inconsitency in the configuration
     pub fn try_solve(&mut self) -> Result<VerificationResult, VerificationError<SQUARE_SIZE>> {
         // TODO optmize
-        loop {
+        // note : both methode change self so the body does not need a body
+        // more over there is a lazy evaluation which is not needed but is actully
+        // good i this cas as the "push" method require more computational power
+        while self.pull_deduction_loop_step()? || self.push_deduction_loop_step()? {
             // println!("{}", self);
-            // console::Term::stderr()
-            //     .move_cursor_up(GAME_SIZE * 2 + 2)
+            // console::Term::stdout()
+            //     .move_cursor_up(SQUARE_SIZE * SQUARE_SIZE * 2 + 2)
             //     .unwrap();
-            let mut modification = false;
+        }
+        self.verify_configuration()
+    }
 
-            for iterators in Self::rows() {
-                for pos in iterators {
-                    if let CellState::Empty(_) = self[pos].state() {
-                        let possibility = self.possibility_cell(pos)?;
-                        if let Some(number) = possibility.cell_number() {
-                            modification = true;
-                            self[pos] = Cell::new(CellState::SolvedDeduction(number));
-                        } else {
-                            // add empty
-                        }
+    /// Run trough all cell an verifiy if there is only one possible value, return if there has been a modification
+    fn pull_deduction_loop_step(&mut self) -> Result<bool, VerificationError<SQUARE_SIZE>> {
+        let mut modification = false;
+
+        for iterators in Self::rows() {
+            for pos in iterators {
+                if let CellState::Empty(_) = self[pos].state() {
+                    let possibility = self.possibility_cell(pos)?;
+                    if let Some(number) = possibility.cell_number() {
+                        modification = true;
+                        self[pos] = Cell::new(CellState::SolvedDeduction(number));
+                    } else {
+                        // add empty
                     }
                 }
             }
-            if !modification {
-                break;
+        }
+        Ok(modification)
+    }
+
+    /// use the "push method": try a number an see if only a singe place is possible, return if there has been a modification
+    fn push_deduction_loop_step(&mut self) -> Result<bool, VerificationError<SQUARE_SIZE>> {
+        Ok(self.push_deduction_iter(Self::rows())?
+            || self.push_deduction_iter(Self::columns())?
+            || self.push_deduction_iter(Self::squares())?)
+    }
+
+    fn push_deduction_iter(
+        &mut self,
+        iters: [impl SudokuIter<SQUARE_SIZE> + Clone; SQUARE_SIZE * SQUARE_SIZE],
+    ) -> Result<bool, VerificationError<SQUARE_SIZE>> {
+        let mut modif = false;
+        for iter in iters {
+            modif |= self.push_deduction_single_iter(iter)?;
+        }
+        Ok(modif)
+    }
+
+    fn push_deduction_single_iter(
+        &mut self,
+        iter: impl SudokuIter<SQUARE_SIZE> + Clone,
+    ) -> Result<bool, VerificationError<SQUARE_SIZE>> {
+        let iter_clone = iter.clone();
+
+        // We update the cell possibility
+        let mut possibilities_count = [0_usize; SQUARE_SIZE * SQUARE_SIZE];
+        for pos in iter {
+            if let CellState::Empty(_) = self[pos].state() {
+                let possibility = self.possibility_cell(pos)?;
+                for (count, possibility) in possibilities_count.iter_mut().zip(possibility.iter()) {
+                    if *possibility {
+                        *count += 1;
+                    }
+                }
+                // check for single number possibility and combine push and pull ?
+                *self[pos].state_mut() = CellState::Empty(Some(possibility));
             }
         }
-        self.verify_configuration()
+
+        let mut modif = false;
+        for pos in iter_clone {
+            if let CellState::Empty(Some(possibility)) = self[pos].state() {
+                for (number, (count, possibility)) in possibilities_count
+                    .iter()
+                    .zip(possibility.clone().iter()) // Clone needed for the borow checker
+                    .enumerate()
+                {
+                    if *count == 1 && *possibility {
+                        self[pos] = Cell::new(CellState::SolvedDeduction(
+                            CellNumber::new(number + 1).unwrap(),
+                        ));
+                        modif = true;
+                    }
+                }
+            }
+        }
+
+        Ok(modif)
     }
 
     /// Solve using the backtrace methode
@@ -180,14 +245,26 @@ where
                     },
                 },
                 None => match direction {
-                    Direction::Forward => break Ok(()),
-                    Direction::Backward => break Err(SolveError::ImpossibleConfiguration),
+                    Direction::Forward => break,
+                    Direction::Backward => return Err(SolveError::ImpossibleConfiguration),
                 },
             }
         }
+
+        // we change the guess into solution
+        for cell in self {
+            if let CellState::Guess(g) = cell.state() {
+                if let Some(number) = g.cell_number() {
+                    *cell.state_mut() = CellState::SolvedBackTrace(number);
+                }
+            }
+        }
+
+        Ok(())
     }
 
     /// Returns all rows.
+    #[allow(clippy::semicolon_if_nothing_returned)] // false positive
     pub fn rows() -> [Row<SQUARE_SIZE>; SQUARE_SIZE * SQUARE_SIZE] {
         // array![ i => Row::new(CellPosition::new_from_number(0, i).unwrap(), self); 9]
         array![
@@ -197,6 +274,7 @@ where
     }
 
     /// returns all columns.
+    #[allow(clippy::semicolon_if_nothing_returned)] // false positive
     pub fn columns() -> [Column<SQUARE_SIZE>; SQUARE_SIZE * SQUARE_SIZE] {
         array![
             x => Column::new(CellPosition::new_from_number(x, 0).unwrap());
@@ -205,6 +283,7 @@ where
     }
 
     /// returns all squares
+    #[allow(clippy::semicolon_if_nothing_returned)] // false positive
     pub fn squares() -> [Square<SQUARE_SIZE>; SQUARE_SIZE * SQUARE_SIZE] {
         array![
             i => Square::new(
@@ -228,6 +307,7 @@ where
         &self,
         it: impl Iterator<Item = CellPosition<SQUARE_SIZE>>,
     ) -> [Vec<(CellPosition<SQUARE_SIZE>, CellState<SQUARE_SIZE>)>; SQUARE_SIZE * SQUARE_SIZE] {
+        #[allow(clippy::semicolon_if_nothing_returned)] // false positive
         let mut array = array![Vec::new(); SQUARE_SIZE * SQUARE_SIZE];
         for el in it {
             let state = self[el].state();
@@ -357,7 +437,7 @@ where
         Ok(possibilities)
     }
 
-    /// Return the possibility of numbers a cell can have
+    /// Return the possibility of numbers a cell can have.
     /// note : Exclude pos from the numbers so it can be use to recompute the possibility on a guessed cell
     fn possibility_cell(
         &self,
@@ -381,6 +461,30 @@ where
     pub fn iter_mut(
         &mut self,
     ) -> impl Iterator<Item = &mut Cell<SQUARE_SIZE>> + FusedIterator + DoubleEndedIterator {
+        self.data.iter_mut().flatten()
+    }
+}
+
+impl<'a, const SQUARE_SIZE: usize> IntoIterator for &'a Sudoku<SQUARE_SIZE>
+where
+    [[Cell<SQUARE_SIZE>; SQUARE_SIZE * SQUARE_SIZE]; SQUARE_SIZE * SQUARE_SIZE]: Sized,
+{
+    type Item = &'a Cell<SQUARE_SIZE>;
+    type IntoIter = std::iter::Flatten<<&'a [[Cell<SQUARE_SIZE>; SQUARE_SIZE * SQUARE_SIZE]; SQUARE_SIZE * SQUARE_SIZE] as IntoIterator>::IntoIter>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.data.iter().flatten()
+    }
+}
+
+impl<'a, const SQUARE_SIZE: usize> IntoIterator for &'a mut Sudoku<SQUARE_SIZE>
+where
+    [[Cell<SQUARE_SIZE>; SQUARE_SIZE * SQUARE_SIZE]; SQUARE_SIZE * SQUARE_SIZE]: Sized,
+{
+    type Item = &'a mut Cell<SQUARE_SIZE>;
+    type IntoIter = std::iter::Flatten<<&'a mut [[Cell<SQUARE_SIZE>; SQUARE_SIZE * SQUARE_SIZE]; SQUARE_SIZE * SQUARE_SIZE] as IntoIterator>::IntoIter>;
+
+    fn into_iter(self) -> Self::IntoIter {
         self.data.iter_mut().flatten()
     }
 }

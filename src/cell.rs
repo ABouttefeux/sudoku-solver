@@ -109,7 +109,6 @@ where
 
 /// Reprensent a cell in a [`crate::grid::Sudoku`]
 #[derive(Debug, Clone, PartialEq, PartialOrd, Ord, Eq, Hash, Default, Serialize, Deserialize)]
-
 pub struct Cell<const SQUARE_SIZE: usize>
 where
     [bool; SQUARE_SIZE * SQUARE_SIZE]: Sized,

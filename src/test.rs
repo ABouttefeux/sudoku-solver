@@ -38,9 +38,11 @@ fn sudoku_solving_deducation() -> Result<(), SolveError<3>> {
     }
 
     for (cell_left, cell_right) in sudoku.iter().zip(sudoku_solution.iter()) {
-        if cell_left.state().cell_number() != cell_right.state().cell_number() {
-            panic!("error cell not equal");
-        }
+        assert_eq!(
+            cell_left.state().cell_number(),
+            cell_right.state().cell_number(),
+            "error cell not equal"
+        );
     }
 
     //-----------------------
@@ -79,9 +81,11 @@ fn sudoku_solving_deducation() -> Result<(), SolveError<3>> {
     }
 
     for (cell_left, cell_right) in sudoku.iter().zip(sudoku_solution.iter()) {
-        if cell_left.state().cell_number() != cell_right.state().cell_number() {
-            panic!("error cell not equal");
-        }
+        assert_eq!(
+            cell_left.state().cell_number(),
+            cell_right.state().cell_number(),
+            "error cell not equal"
+        );
     }
 
     Ok(())
@@ -120,9 +124,11 @@ fn sudoku_solving_back_trace() -> Result<(), SolveError<3>> {
     sudoku.solve_back_trace()?;
 
     for (cell_left, cell_right) in sudoku.iter().zip(sudoku_solution.iter()) {
-        if cell_left.state().cell_number() != cell_right.state().cell_number() {
-            panic!("error cell not equal");
-        }
+        assert_eq!(
+            cell_left.state().cell_number(),
+            cell_right.state().cell_number(),
+            "error cell not equal"
+        );
     }
 
     //--------------------------
@@ -158,9 +164,11 @@ fn sudoku_solving_back_trace() -> Result<(), SolveError<3>> {
     sudoku.solve_back_trace()?;
 
     for (cell_left, cell_right) in sudoku.iter().zip(sudoku_solution.iter()) {
-        if cell_left.state().cell_number() != cell_right.state().cell_number() {
-            panic!("error cell not equal");
-        }
+        assert_eq!(
+            cell_left.state().cell_number(),
+            cell_right.state().cell_number(),
+            "error cell not equal"
+        );
     }
 
     Ok(())
@@ -199,4 +207,35 @@ fn sudoku_solving_back_trace_error() {
             .map_err(|err| err.into()),
     );
     verify_error(sudoku.solve_back_trace());
+}
+
+#[test]
+fn test_18_clues() -> Result<(), SolveError<3>> {
+    let mut sudoku = Sudoku::<3>::new([
+        [0, 0, 0, 2, 1, 0, 0, 0, 0],
+        [0, 0, 7, 3, 0, 0, 0, 0, 0],
+        [0, 5, 8, 0, 0, 0, 0, 0, 0],
+        [4, 3, 0, 0, 0, 0, 0, 0, 0],
+        [2, 0, 0, 0, 0, 0, 0, 0, 8],
+        [0, 0, 0, 0, 0, 0, 0, 7, 6],
+        [0, 0, 0, 0, 0, 0, 2, 5, 0],
+        [0, 0, 0, 0, 0, 7, 3, 0, 0],
+        [0, 0, 0, 0, 9, 8, 0, 0, 0],
+    ]);
+
+    let mut sudoku_copy = sudoku.clone();
+
+    sudoku.solve_back_trace()?;
+    match sudoku.verify_configuration()? {
+        VerificationResult::Incomplete => panic!("backtrace solution config incomplete"),
+        VerificationResult::Complete => {}
+    }
+
+    sudoku_copy.try_solve()?;
+    match sudoku_copy.verify_configuration()? {
+        VerificationResult::Incomplete => panic!("deduction solution config incomplete"),
+        VerificationResult::Complete => {}
+    }
+
+    Ok(())
 }
