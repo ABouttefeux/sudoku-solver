@@ -22,7 +22,7 @@
 #![warn(clippy::suboptimal_flops)]
 #![warn(clippy::todo)]
 #![warn(clippy::trivially_copy_pass_by_ref)]
-#![warn(clippy::type_repetition_in_bounds)]
+// #![warn(clippy::type_repetition_in_bounds)]
 #![warn(clippy::unreadable_literal)]
 #![warn(clippy::unseparated_literal_suffix)]
 #![warn(clippy::unused_self)]
@@ -30,16 +30,38 @@
 #![warn(clippy::missing_errors_doc)]
 #![warn(missing_docs)]
 #![forbid(unsafe_code)]
-#![doc(html_root_url = "https://docs.rs/roccat-vulcan-api-rs/0.2.1")]
+#![doc(html_root_url = "https://docs.rs/sudoku/0.0.0")]
 #![warn(clippy::all)]
 #![warn(clippy::exhaustive_enums)]
 #![warn(rustdoc::missing_crate_level_docs)]
 //#![warn(clippy::missing_docs_in_private_items)]
 //#![doc(test(attr(deny(warnings))))]
+#![allow(incomplete_features)]
+#![feature(generic_const_exprs)]
 
 pub mod cell;
 pub mod error;
-pub mod sudoku;
-pub mod utils;
+pub mod grid;
+pub mod size;
 
-const GAME_SIZE: usize = 9;
+#[cfg(test)]
+mod test;
+
+// Improvement list,
+// const generics size
+// test algo with sudoku found online
+// optimisation ?
+// improve deduction algo
+// GUI ?
+// draw contexte
+// limit number of draw
+
+// /// Size of a the square
+// pub const SQUARE_SIZE: usize = 3;
+// /// number of number per rows / collumns / square
+// pub const GAME_SIZE: usize = SQUARE_SIZE * SQUARE_SIZE;
+
+mod private {
+    /// Private trait to prevent the implementation by other struct outside the crate
+    pub trait Sealed {}
+}

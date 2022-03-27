@@ -21,7 +21,7 @@ jobs:
     - name: Install Rust stable toolchain
       uses: actions-rs/toolchain@v1
       with:
-        toolchain: stable
+        toolchain: nightly
     
     - name: Doc
-      run: cargo doc --all --no-deps
+      run: cargo +nightly doc --all --no-deps
