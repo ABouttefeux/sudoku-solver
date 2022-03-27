@@ -13,7 +13,6 @@ use rand::Rng;
 use serde::{Deserialize, Serialize};
 
 use crate::cell::{Cell, CellGuess, CellNumber, CellPossibilities, CellState};
-use crate::{GAME_SIZE, SQUARE_SIZE};
 
 mod iterator;
 pub use iterator::*;
@@ -27,12 +26,18 @@ pub use position::*;
 //     data: [[CellStateInitial; GAME_SIZE]; GAME_SIZE],
 // }
 
-#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Ord, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, PartialOrd, Ord, Eq, Hash, Serialize, Deserialize)]
 /// Represent the grid with the cell and the current game state
-pub struct Sudoku {
-    data: [[Cell; GAME_SIZE]; GAME_SIZE],
+pub struct Sudoku<const SQUARE_SIZE: usize>
+where
+    [[Cell<SQUARE_SIZE>; SQUARE_SIZE * SQUARE_SIZE]; SQUARE_SIZE * SQUARE_SIZE]: Sized,
+{
+    #[serde(bound(
+        serialize = "[[Cell<SQUARE_SIZE>; SQUARE_SIZE * SQUARE_SIZE]; SQUARE_SIZE * SQUARE_SIZE]: Serialize",
+        deserialize = "[[Cell<SQUARE_SIZE>; SQUARE_SIZE * SQUARE_SIZE]; SQUARE_SIZE * SQUARE_SIZE]: Deserialize<'de>"
+    ))]
+    data: [[Cell<SQUARE_SIZE>; SQUARE_SIZE * SQUARE_SIZE]; SQUARE_SIZE * SQUARE_SIZE],
 }
-
 // #[derive(
 //     Debug, Clone, Copy, PartialEq, PartialOrd, Ord, Eq, Hash, Serialize, Deserialize,
 // )]
@@ -40,16 +45,20 @@ pub struct Sudoku {
 //     data: [[Cell; GAME_SIZE]; GAME_SIZE],
 // }
 
-impl Sudoku {
+impl<const SQUARE_SIZE: usize> Sudoku<SQUARE_SIZE>
+where
+    [[Cell<SQUARE_SIZE>; SQUARE_SIZE * SQUARE_SIZE]; SQUARE_SIZE * SQUARE_SIZE]: Sized,
+{
     /// Create a configuration with the given array, number 0 ore >= 10 are replaces by empty cells.
-    pub fn new(input: [[usize; GAME_SIZE]; GAME_SIZE]) -> Self {
+    #[allow(clippy::semicolon_if_nothing_returned)] // false positive
+    pub fn new(input: [[usize; SQUARE_SIZE * SQUARE_SIZE]; SQUARE_SIZE * SQUARE_SIZE]) -> Self {
         Self {
             data: array![
                 x => array![
                     y => Cell::new(CellState::new(CellNumber::new(input[x][y])));
-                    GAME_SIZE
+                    SQUARE_SIZE * SQUARE_SIZE
                 ];
-                GAME_SIZE
+                SQUARE_SIZE * SQUARE_SIZE
             ],
         }
     }
@@ -57,11 +66,13 @@ impl Sudoku {
     /// Create an empty config with `number_of_hints` randoms hints
     // TODO give valide config
     pub fn random(number_of_hints: usize, rng: &mut impl Rng) -> Option<Self> {
-        if number_of_hints > GAME_SIZE * GAME_SIZE {
+        if number_of_hints > SQUARE_SIZE.pow(4) {
             None
         } else {
-            let distribution = Uniform::new(0, GAME_SIZE);
-            let data = [[Cell::new(CellState::Empty(None)); GAME_SIZE]; GAME_SIZE];
+            let distribution = Uniform::new(0, SQUARE_SIZE.pow(2));
+            #[allow(clippy::semicolon_if_nothing_returned)] // false positive
+            let data = array![array![Cell::new(CellState::Empty(None)); SQUARE_SIZE * SQUARE_SIZE];
+                SQUARE_SIZE * SQUARE_SIZE];
             let mut sudoku = Self { data };
             let mut number_of_hints_placed = 0;
             while number_of_hints_placed < number_of_hints {
@@ -86,60 +97,125 @@ impl Sudoku {
     }
 
     /// Get a reference to the cell at the given position
-    pub const fn get_cell(&self, index: CellPosition) -> &Cell {
+    pub const fn get_cell(&self, index: CellPosition<SQUARE_SIZE>) -> &Cell<SQUARE_SIZE> {
         &self.data[index.x_usize()][index.y_usize()]
     }
 
     /// Get a mut reference to the cell at the given position
-    pub fn get_cell_mut(&mut self, index: CellPosition) -> &mut Cell {
+    pub fn get_cell_mut(&mut self, index: CellPosition<SQUARE_SIZE>) -> &mut Cell<SQUARE_SIZE> {
         &mut self.data[index.x_usize()][index.y_usize()]
     }
 
     /// Try solve the system by using deducting method
     /// # Errors
     /// return an error if there is an inconsitency in the configuration
-    pub fn try_solve(&mut self) -> Result<VerificationResult, VerificationError> {
+    pub fn try_solve(&mut self) -> Result<VerificationResult, VerificationError<SQUARE_SIZE>> {
         // TODO optmize
-        loop {
+        // note : both methode change self so the body does not need a body
+        // more over there is a lazy evaluation which is not needed but is actully
+        // good i this cas as the "push" method require more computational power
+        while self.pull_deduction_loop_step()? || self.push_deduction_loop_step()? {
             // println!("{}", self);
-            // console::Term::stderr()
-            //     .move_cursor_up(GAME_SIZE * 2 + 2)
+            // console::Term::stdout()
+            //     .move_cursor_up(SQUARE_SIZE * SQUARE_SIZE * 2 + 2)
             //     .unwrap();
-            let mut modification = false;
+        }
+        self.verify_configuration()
+    }
 
-            for iterators in Self::rows() {
-                for pos in iterators {
-                    if let CellState::Empty(_) = self[pos].state() {
-                        let possibility = self.possibility_cell(pos)?;
-                        if let Some(number) = possibility.cell_number() {
-                            modification = true;
-                            self[pos] = Cell::new(CellState::SolvedDeduction(number));
-                        } else {
-                            // add empty
-                        }
+    /// Run trough all cell an verifiy if there is only one possible value, return if there has been a modification
+    fn pull_deduction_loop_step(&mut self) -> Result<bool, VerificationError<SQUARE_SIZE>> {
+        let mut modification = false;
+
+        for iterators in Self::rows() {
+            for pos in iterators {
+                if let CellState::Empty(_) = self[pos].state() {
+                    let possibility = self.possibility_cell(pos)?;
+                    if let Some(number) = possibility.cell_number() {
+                        modification = true;
+                        self[pos] = Cell::new(CellState::SolvedDeduction(number));
+                    } else {
+                        // add empty
                     }
                 }
             }
-            if !modification {
-                break;
+        }
+        Ok(modification)
+    }
+
+    /// use the "push method": try a number an see if only a singe place is possible, return if there has been a modification
+    fn push_deduction_loop_step(&mut self) -> Result<bool, VerificationError<SQUARE_SIZE>> {
+        Ok(self.push_deduction_iter(Self::rows())?
+            || self.push_deduction_iter(Self::columns())?
+            || self.push_deduction_iter(Self::squares())?)
+    }
+
+    fn push_deduction_iter(
+        &mut self,
+        iters: [impl SudokuIter<SQUARE_SIZE> + Clone; SQUARE_SIZE * SQUARE_SIZE],
+    ) -> Result<bool, VerificationError<SQUARE_SIZE>> {
+        let mut modif = false;
+        for iter in iters {
+            modif |= self.push_deduction_single_iter(iter)?;
+        }
+        Ok(modif)
+    }
+
+    fn push_deduction_single_iter(
+        &mut self,
+        iter: impl SudokuIter<SQUARE_SIZE> + Clone,
+    ) -> Result<bool, VerificationError<SQUARE_SIZE>> {
+        let iter_clone = iter.clone();
+
+        // We update the cell possibility
+        let mut possibilities_count = [0_usize; SQUARE_SIZE * SQUARE_SIZE];
+        for pos in iter {
+            if let CellState::Empty(_) = self[pos].state() {
+                let possibility = self.possibility_cell(pos)?;
+                for (count, possibility) in possibilities_count.iter_mut().zip(possibility.iter()) {
+                    if *possibility {
+                        *count += 1;
+                    }
+                }
+                // check for single number possibility and combine push and pull ?
+                *self[pos].state_mut() = CellState::Empty(Some(possibility));
             }
         }
-        self.verify_configuration()
+
+        let mut modif = false;
+        for pos in iter_clone {
+            if let CellState::Empty(Some(possibility)) = self[pos].state() {
+                for (number, (count, possibility)) in possibilities_count
+                    .iter()
+                    .zip(possibility.clone().iter()) // Clone needed for the borow checker
+                    .enumerate()
+                {
+                    if *count == 1 && *possibility {
+                        self[pos] = Cell::new(CellState::SolvedDeduction(
+                            CellNumber::new(number + 1).unwrap(),
+                        ));
+                        modif = true;
+                    }
+                }
+            }
+        }
+
+        Ok(modif)
     }
 
     /// Solve using the backtrace methode
     /// # Errors
     /// return an error if there is an inconsitency in the configuration
-    pub fn solve_back_trace(&mut self) -> Result<(), SolveError> {
+    pub fn solve_back_trace(&mut self) -> Result<(), SolveError<SQUARE_SIZE>> {
         let mut direction = Direction::Forward;
         let mut pos_tracker = BackTracePositionTracker::new();
         loop {
             //TODO better prints
 
-            println!("{}", self);
-            console::Term::stdout()
-                .move_cursor_up(GAME_SIZE * 2 + 2)
-                .unwrap();
+            // println!("{}", self);
+            // console::Term::stdout()
+            //     .move_cursor_up(SQUARE_SIZE.pow(2) * 2 + 2)
+            //     .unwrap();
             let pos = pos_tracker.move_pos(direction);
             match pos {
                 Some(pos) => match self[pos].state_mut() {
@@ -169,44 +245,74 @@ impl Sudoku {
                     },
                 },
                 None => match direction {
-                    Direction::Forward => break Ok(()),
-                    Direction::Backward => break Err(SolveError::ImpossibleConfiguration),
+                    Direction::Forward => break,
+                    Direction::Backward => return Err(SolveError::ImpossibleConfiguration),
                 },
             }
         }
+
+        // we change the guess into solution
+        for cell in self {
+            if let CellState::Guess(g) = cell.state() {
+                if let Some(number) = g.cell_number() {
+                    *cell.state_mut() = CellState::SolvedBackTrace(number);
+                }
+            }
+        }
+
+        Ok(())
     }
 
     /// Returns all rows.
-    pub fn rows() -> [Row; GAME_SIZE] {
+    #[allow(clippy::semicolon_if_nothing_returned)] // false positive
+    pub fn rows() -> [Row<SQUARE_SIZE>; SQUARE_SIZE * SQUARE_SIZE] {
         // array![ i => Row::new(CellPosition::new_from_number(0, i).unwrap(), self); 9]
-        array![ x => Row::new(CellPosition::new_from_number(0, x).unwrap()); GAME_SIZE]
+        array![
+            x => Row::new(CellPosition::new_from_number(0, x).unwrap());
+            SQUARE_SIZE * SQUARE_SIZE
+        ]
     }
 
     /// returns all columns.
-    pub fn columns() -> [Column; GAME_SIZE] {
-        array![ x => Column::new(CellPosition::new_from_number(x, 0).unwrap()); GAME_SIZE]
+    #[allow(clippy::semicolon_if_nothing_returned)] // false positive
+    pub fn columns() -> [Column<SQUARE_SIZE>; SQUARE_SIZE * SQUARE_SIZE] {
+        array![
+            x => Column::new(CellPosition::new_from_number(x, 0).unwrap());
+            SQUARE_SIZE * SQUARE_SIZE
+        ]
     }
 
     /// returns all squares
-    pub fn squares() -> [Square; GAME_SIZE] {
-        array![ i => Square::new(CellPosition::new_from_number((i % SQUARE_SIZE)* SQUARE_SIZE, (i / SQUARE_SIZE) * SQUARE_SIZE).unwrap()); GAME_SIZE]
+    #[allow(clippy::semicolon_if_nothing_returned)] // false positive
+    pub fn squares() -> [Square<SQUARE_SIZE>; SQUARE_SIZE * SQUARE_SIZE] {
+        array![
+            i => Square::new(
+                CellPosition::new_from_number(
+                    (i % SQUARE_SIZE)* SQUARE_SIZE,
+                    (i / SQUARE_SIZE) * SQUARE_SIZE)
+                .unwrap()
+            );
+            SQUARE_SIZE * SQUARE_SIZE]
     }
 
     /// Returns the row colum and square at the given position.
-    fn row_column_square(pos: CellPosition) -> (Row, Column, Square) {
+    fn row_column_square(
+        pos: CellPosition<SQUARE_SIZE>,
+    ) -> (Row<SQUARE_SIZE>, Column<SQUARE_SIZE>, Square<SQUARE_SIZE>) {
         (Row::new(pos), Column::new(pos), Square::new(pos))
     }
 
     /// Take an iteractors and collects it and return an Vec sorted by cell number
     fn sorted_cell_by_number(
         &self,
-        it: impl Iterator<Item = CellPosition>,
-    ) -> [Vec<(CellPosition, CellState)>; GAME_SIZE] {
-        let mut array = array![Vec::new(); GAME_SIZE];
+        it: impl Iterator<Item = CellPosition<SQUARE_SIZE>>,
+    ) -> [Vec<(CellPosition<SQUARE_SIZE>, CellState<SQUARE_SIZE>)>; SQUARE_SIZE * SQUARE_SIZE] {
+        #[allow(clippy::semicolon_if_nothing_returned)] // false positive
+        let mut array = array![Vec::new(); SQUARE_SIZE * SQUARE_SIZE];
         for el in it {
             let state = self[el].state();
             if let Some(number) = state.cell_number() {
-                array[number.number() - 1].push((el, state));
+                array[number.number() - 1].push((el, state.clone()));
                 // - 1 because the number is between 1 and 9
             }
         }
@@ -222,8 +328,8 @@ impl Sudoku {
     /// - [`VerificationError::WrongGuess`] if a guess is conflicting with a solution or an given number
     fn verify_iterator(
         &self,
-        it: &mut impl Iterator<Item = CellPosition>,
-    ) -> Result<VerificationResult, VerificationError> {
+        it: &mut impl Iterator<Item = CellPosition<SQUARE_SIZE>>,
+    ) -> Result<VerificationResult, VerificationError<SQUARE_SIZE>> {
         let array = self.sorted_cell_by_number(it);
 
         let mut complete = VerificationResult::Complete;
@@ -241,8 +347,8 @@ impl Sudoku {
     /// # Panics
     /// panics if the vector does not have at least two elements
     fn report_verification_error_conflict(
-        vec: Vec<(CellPosition, CellState)>,
-    ) -> VerificationError {
+        vec: Vec<(CellPosition<SQUARE_SIZE>, CellState<SQUARE_SIZE>)>,
+    ) -> VerificationError<SQUARE_SIZE> {
         let mut count_given = 0_usize;
         let mut count_guess = 0_usize;
         let mut count_solution = 0_usize;
@@ -284,11 +390,11 @@ impl Sudoku {
     /// - [`VerificationError::WrongSolution`] if a hint and a solution or two solutions are conflicting
     /// - [`VerificationError::WrongGuess`] if a guess is conflicting with a solution or an given number
     fn verify_list_iter<'a, I>(
-        self,
+        &self,
         list: impl IntoIterator<Item = &'a mut I>,
-    ) -> Result<VerificationResult, VerificationError>
+    ) -> Result<VerificationResult, VerificationError<SQUARE_SIZE>>
     where
-        I: Iterator<Item = CellPosition> + 'a,
+        I: Iterator<Item = CellPosition<SQUARE_SIZE>> + 'a,
     {
         let mut verification_result = VerificationResult::Complete;
         for iter in list {
@@ -306,7 +412,9 @@ impl Sudoku {
     /// - [`VerificationError::HintInconsistency`] if two (or more) hints are in conflict
     /// - [`VerificationError::WrongSolution`] if a hint and a solution or two solutions are conflicting
     /// - [`VerificationError::WrongGuess`] if a guess is conflicting with a solution or an given number
-    pub fn verify_configuration(&self) -> Result<VerificationResult, VerificationError> {
+    pub fn verify_configuration(
+        &self,
+    ) -> Result<VerificationResult, VerificationError<SQUARE_SIZE>> {
         Ok(self.verify_list_iter(&mut Self::rows())?
             & self.verify_list_iter(&mut Self::columns())?
             & self.verify_list_iter(&mut Self::squares())?)
@@ -314,8 +422,8 @@ impl Sudoku {
 
     fn possibility_iter(
         &self,
-        it: impl Iterator<Item = CellPosition>,
-    ) -> Result<CellPossibilities, VerificationError> {
+        it: impl Iterator<Item = CellPosition<SQUARE_SIZE>>,
+    ) -> Result<CellPossibilities<SQUARE_SIZE>, VerificationError<SQUARE_SIZE>> {
         let array = self.sorted_cell_by_number(it);
 
         let mut possibilities = CellPossibilities::new_no_possibility();
@@ -329,25 +437,54 @@ impl Sudoku {
         Ok(possibilities)
     }
 
-    /// Return the possibility of numbers a cell can have
+    /// Return the possibility of numbers a cell can have.
     /// note : Exclude pos from the numbers so it can be use to recompute the possibility on a guessed cell
-    fn possibility_cell(&self, pos: CellPosition) -> Result<CellPossibilities, VerificationError> {
+    fn possibility_cell(
+        &self,
+        pos: CellPosition<SQUARE_SIZE>,
+    ) -> Result<CellPossibilities<SQUARE_SIZE>, VerificationError<SQUARE_SIZE>> {
         let (row, col, square) = Self::row_column_square(pos);
-        let filter_cell = |cell_pos: &CellPosition| *cell_pos != pos;
+        let filter_cell = |cell_pos: &CellPosition<SQUARE_SIZE>| *cell_pos != pos;
         Ok(self.possibility_iter(row.filter(filter_cell))?
             & self.possibility_iter(col.filter(filter_cell))?
             & self.possibility_iter(square.filter(filter_cell))?)
     }
 
     /// Create a iterators on all cells
-    pub fn iter(&self) -> impl Iterator<Item = &Cell> + FusedIterator + DoubleEndedIterator {
+    pub fn iter(
+        &self,
+    ) -> impl Iterator<Item = &Cell<SQUARE_SIZE>> + FusedIterator + DoubleEndedIterator {
         self.data.iter().flatten()
     }
 
     /// Create a iterators on all cells with a mut reference
     pub fn iter_mut(
         &mut self,
-    ) -> impl Iterator<Item = &mut Cell> + FusedIterator + DoubleEndedIterator {
+    ) -> impl Iterator<Item = &mut Cell<SQUARE_SIZE>> + FusedIterator + DoubleEndedIterator {
+        self.data.iter_mut().flatten()
+    }
+}
+
+impl<'a, const SQUARE_SIZE: usize> IntoIterator for &'a Sudoku<SQUARE_SIZE>
+where
+    [[Cell<SQUARE_SIZE>; SQUARE_SIZE * SQUARE_SIZE]; SQUARE_SIZE * SQUARE_SIZE]: Sized,
+{
+    type Item = &'a Cell<SQUARE_SIZE>;
+    type IntoIter = std::iter::Flatten<<&'a [[Cell<SQUARE_SIZE>; SQUARE_SIZE * SQUARE_SIZE]; SQUARE_SIZE * SQUARE_SIZE] as IntoIterator>::IntoIter>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.data.iter().flatten()
+    }
+}
+
+impl<'a, const SQUARE_SIZE: usize> IntoIterator for &'a mut Sudoku<SQUARE_SIZE>
+where
+    [[Cell<SQUARE_SIZE>; SQUARE_SIZE * SQUARE_SIZE]; SQUARE_SIZE * SQUARE_SIZE]: Sized,
+{
+    type Item = &'a mut Cell<SQUARE_SIZE>;
+    type IntoIter = std::iter::Flatten<<&'a mut [[Cell<SQUARE_SIZE>; SQUARE_SIZE * SQUARE_SIZE]; SQUARE_SIZE * SQUARE_SIZE] as IntoIterator>::IntoIter>;
+
+    fn into_iter(self) -> Self::IntoIter {
         self.data.iter_mut().flatten()
     }
 }
@@ -355,16 +492,16 @@ impl Sudoku {
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Ord, Eq, Hash, Serialize, Deserialize)]
 #[non_exhaustive]
 /// Error of a Sudoku configuration, the first cell position is the place of the stronger cell
-pub enum VerificationError {
+pub enum VerificationError<const SQUARE_SIZE: usize> {
     /// Inconsitency in the hints
-    HintInconsistency(CellPosition, CellPosition),
+    HintInconsistency(CellPosition<SQUARE_SIZE>, CellPosition<SQUARE_SIZE>),
     /// A solution is wrong
-    WrongSolution(CellPosition, CellPosition),
+    WrongSolution(CellPosition<SQUARE_SIZE>, CellPosition<SQUARE_SIZE>),
     /// A Guess is wrong
-    WrongGuess(CellPosition, CellPosition),
+    WrongGuess(CellPosition<SQUARE_SIZE>, CellPosition<SQUARE_SIZE>),
 }
 
-impl Display for VerificationError {
+impl<const SQUARE_SIZE: usize> Display for VerificationError<SQUARE_SIZE> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::WrongGuess(pos1, pos2) => write!(f, "wrong guess between {} and {}", pos2, pos1,),
@@ -378,19 +515,19 @@ impl Display for VerificationError {
     }
 }
 
-impl Error for VerificationError {}
+impl<const SQUARE_SIZE: usize> Error for VerificationError<SQUARE_SIZE> {}
 
 /// Error returned by [`Sudoku::solve_back_trace`]
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Ord, Eq, Hash, Serialize, Deserialize)]
 #[non_exhaustive]
-pub enum SolveError {
+pub enum SolveError<const SQUARE_SIZE: usize> {
     /// Verification error, the grid is inconsistant
-    VerificationError(VerificationError),
+    VerificationError(VerificationError<SQUARE_SIZE>),
     /// Ther is no solution for this configuration
     ImpossibleConfiguration,
 }
 
-impl Display for SolveError {
+impl<const SQUARE_SIZE: usize> Display for SolveError<SQUARE_SIZE> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::VerificationError(error) => write!(f, "{}", error),
@@ -401,7 +538,7 @@ impl Display for SolveError {
     }
 }
 
-impl Error for SolveError {
+impl<const SQUARE_SIZE: usize> Error for SolveError<SQUARE_SIZE> {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
             Self::VerificationError(error) => Some(error),
@@ -410,8 +547,8 @@ impl Error for SolveError {
     }
 }
 
-impl From<VerificationError> for SolveError {
-    fn from(error: VerificationError) -> Self {
+impl<const SQUARE_SIZE: usize> From<VerificationError<SQUARE_SIZE>> for SolveError<SQUARE_SIZE> {
+    fn from(error: VerificationError<SQUARE_SIZE>) -> Self {
         Self::VerificationError(error)
     }
 }
@@ -463,16 +600,22 @@ impl BitXor for VerificationResult {
 }
 
 //TODO range
-impl Index<CellPosition> for Sudoku {
-    type Output = Cell;
+impl<const SQUARE_SIZE: usize> Index<CellPosition<SQUARE_SIZE>> for Sudoku<SQUARE_SIZE>
+where
+    [[Cell<SQUARE_SIZE>; SQUARE_SIZE * SQUARE_SIZE]; SQUARE_SIZE * SQUARE_SIZE]: Sized,
+{
+    type Output = Cell<SQUARE_SIZE>;
 
-    fn index(&self, index: CellPosition) -> &Self::Output {
+    fn index(&self, index: CellPosition<SQUARE_SIZE>) -> &Self::Output {
         self.get_cell(index)
     }
 }
 
-impl IndexMut<CellPosition> for Sudoku {
-    fn index_mut(&mut self, index: CellPosition) -> &mut Self::Output {
+impl<const SQUARE_SIZE: usize> IndexMut<CellPosition<SQUARE_SIZE>> for Sudoku<SQUARE_SIZE>
+where
+    [[Cell<SQUARE_SIZE>; SQUARE_SIZE * SQUARE_SIZE]; SQUARE_SIZE * SQUARE_SIZE]: Sized,
+{
+    fn index_mut(&mut self, index: CellPosition<SQUARE_SIZE>) -> &mut Self::Output {
         self.get_cell_mut(index)
     }
 }
@@ -487,9 +630,11 @@ fn size_number(number: usize) -> usize {
     ((number as f64).log10().floor() as usize) + 1
 }
 
-fn write_line_separation_basic(f: &mut Formatter<'_>) -> std::fmt::Result {
-    let line_length = size_number(GAME_SIZE) + SPACING_CELL * 2;
-    for _ in 0..GAME_SIZE {
+fn write_line_separation_basic<const SQUARE_SIZE: usize>(
+    f: &mut Formatter<'_>,
+) -> std::fmt::Result {
+    let line_length = size_number(SQUARE_SIZE.pow(2)) + SPACING_CELL * 2;
+    for _ in 0..SQUARE_SIZE.pow(2) {
         write!(f, "+")?;
         write!(f, "{}", "-".repeat(line_length))?;
     }
@@ -498,10 +643,13 @@ fn write_line_separation_basic(f: &mut Formatter<'_>) -> std::fmt::Result {
 
 // ╣ ║ ┐ └ ┴ ┬ ├ ─ ┼ ╩ ╦ ╠ ═ ╬ ╟ ╞ ╡ ╢ ╤ ╧ ╫ ╪
 #[allow(clippy::non_ascii_literal)]
-fn write_line_separation(f: &mut Formatter<'_>, number: usize) -> std::fmt::Result {
+fn write_line_separation<const SQUARE_SIZE: usize>(
+    f: &mut Formatter<'_>,
+    number: usize,
+) -> std::fmt::Result {
     let (char_left, double_line, char_right, single_cross, double_cross) = if number == 0 {
         ('╔', true, '╗', '╤', '╦')
-    } else if number == GAME_SIZE {
+    } else if number == SQUARE_SIZE * SQUARE_SIZE {
         ('╚', true, '╝', '╧', '╩')
     } else if number % SQUARE_SIZE == 0 {
         ('╠', true, '╣', '╪', '╬')
@@ -509,9 +657,9 @@ fn write_line_separation(f: &mut Formatter<'_>, number: usize) -> std::fmt::Resu
         ('╟', false, '╢', '┼', '╫')
     };
     let line_str = if double_line { "═" } else { "─" };
-    let line_length = size_number(GAME_SIZE) + SPACING_CELL * 2;
+    let line_length = size_number(SQUARE_SIZE * SQUARE_SIZE) + SPACING_CELL * 2;
     write!(f, "{}", char_left)?;
-    for index in 1..GAME_SIZE {
+    for index in 1..(SQUARE_SIZE * SQUARE_SIZE) {
         write!(f, "{}", line_str.repeat(line_length))?;
         let cross_char = if index % SQUARE_SIZE == 0 {
             double_cross
@@ -524,7 +672,10 @@ fn write_line_separation(f: &mut Formatter<'_>, number: usize) -> std::fmt::Resu
     writeln!(f, "{}", char_right)
 }
 
-fn style_cell(cell: &Cell) -> Style {
+fn style_cell<const SQUARE_SIZE: usize>(cell: &Cell<SQUARE_SIZE>) -> Style
+where
+    [bool; SQUARE_SIZE * SQUARE_SIZE]: Sized,
+{
     match cell.state() {
         CellState::Given(_) => Style::new().white(),
         CellState::SolvedDeduction(_) => Style::new().green(),
@@ -535,12 +686,21 @@ fn style_cell(cell: &Cell) -> Style {
 }
 
 #[allow(clippy::repeat_once)] // because it is a constant that could be not 1.
-fn display_cell_interior(f: &mut Formatter<'_>, cell: &Cell) -> std::fmt::Result {
+fn display_cell_interior<const SQUARE_SIZE: usize>(
+    f: &mut Formatter<'_>,
+    cell: &Cell<SQUARE_SIZE>,
+) -> std::fmt::Result
+where
+    [bool; SQUARE_SIZE * SQUARE_SIZE]: Sized,
+{
     if let Some(number) = cell.state().cell_number() {
         write!(
             f,
             "{}",
-            " ".repeat(SPACING_CELL + size_number(GAME_SIZE) - size_number(number.number()))
+            " ".repeat(
+                SPACING_CELL + size_number(SQUARE_SIZE * SQUARE_SIZE)
+                    - size_number(number.number())
+            )
         )?;
         let style = style_cell(cell);
         write!(f, "{}{}", style.apply_to(number), " ".repeat(SPACING_CELL))
@@ -548,27 +708,30 @@ fn display_cell_interior(f: &mut Formatter<'_>, cell: &Cell) -> std::fmt::Result
         write!(
             f,
             "{}",
-            " ".repeat(size_number(GAME_SIZE) + SPACING_CELL * 2)
+            " ".repeat(size_number(SQUARE_SIZE * SQUARE_SIZE) + SPACING_CELL * 2)
         )
     }
 }
 
-impl Display for Sudoku {
+impl<const SQUARE_SIZE: usize> Display for Sudoku<SQUARE_SIZE>
+where
+    [[Cell<SQUARE_SIZE>; SQUARE_SIZE * SQUARE_SIZE]; SQUARE_SIZE * SQUARE_SIZE]: Sized,
+{
     #[allow(clippy::non_ascii_literal)]
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         if f.sign_minus() {
-            for row in self.data {
-                write_line_separation_basic(f)?;
+            for row in &self.data {
+                write_line_separation_basic::<SQUARE_SIZE>(f)?;
                 for cell in row {
                     write!(f, "|")?;
-                    display_cell_interior(f, &cell)?;
+                    display_cell_interior::<SQUARE_SIZE>(f, cell)?;
                 }
                 writeln!(f, "|")?;
             }
-            write_line_separation_basic(f)
+            write_line_separation_basic::<SQUARE_SIZE>(f)
         } else {
             for (l_index, row) in self.data.iter().enumerate() {
-                write_line_separation(f, l_index)?;
+                write_line_separation::<SQUARE_SIZE>(f, l_index)?;
                 for (index, cell) in row.iter().enumerate() {
                     let v_line = if index % SQUARE_SIZE == 0 {
                         '║'
@@ -576,11 +739,11 @@ impl Display for Sudoku {
                         '│'
                     };
                     write!(f, "{}", v_line)?;
-                    display_cell_interior(f, cell)?;
+                    display_cell_interior::<SQUARE_SIZE>(f, cell)?;
                 }
                 writeln!(f, "║")?;
             }
-            write_line_separation(f, GAME_SIZE)
+            write_line_separation::<SQUARE_SIZE>(f, SQUARE_SIZE * SQUARE_SIZE)
         }
     }
 }

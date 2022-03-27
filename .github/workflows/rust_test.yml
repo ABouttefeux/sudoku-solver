@@ -1,4 +1,4 @@
-name: Rust
+name: Rust test
 
 on:
   push:
@@ -24,9 +24,6 @@ jobs:
       uses: actions-rs/toolchain@v1
       with:
         toolchain: nightly
-    
-    - name: Build
-      run: cargo +nightly build --all --verbose
       
-    - name: Run tests
+    - name: Run tests only
       run: cargo +nightly test --all --verbose

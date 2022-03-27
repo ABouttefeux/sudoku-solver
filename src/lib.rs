@@ -22,7 +22,7 @@
 #![warn(clippy::suboptimal_flops)]
 #![warn(clippy::todo)]
 #![warn(clippy::trivially_copy_pass_by_ref)]
-#![warn(clippy::type_repetition_in_bounds)]
+// #![warn(clippy::type_repetition_in_bounds)]
 #![warn(clippy::unreadable_literal)]
 #![warn(clippy::unseparated_literal_suffix)]
 #![warn(clippy::unused_self)]
@@ -36,6 +36,8 @@
 #![warn(rustdoc::missing_crate_level_docs)]
 //#![warn(clippy::missing_docs_in_private_items)]
 //#![doc(test(attr(deny(warnings))))]
+#![allow(incomplete_features)]
+#![feature(generic_const_exprs)]
 
 pub mod cell;
 pub mod error;
@@ -54,10 +56,10 @@ mod test;
 // draw contexte
 // limit number of draw
 
-/// Size of a the square
-pub const SQUARE_SIZE: usize = 3;
-/// number of number per rows / collumns / square
-pub const GAME_SIZE: usize = SQUARE_SIZE * SQUARE_SIZE;
+// /// Size of a the square
+// pub const SQUARE_SIZE: usize = 3;
+// /// number of number per rows / collumns / square
+// pub const GAME_SIZE: usize = SQUARE_SIZE * SQUARE_SIZE;
 
 mod private {
     /// Private trait to prevent the implementation by other struct outside the crate

@@ -3,18 +3,17 @@ use std::fmt::{Display, Formatter};
 use serde::{Deserialize, Serialize};
 
 use crate::error::SetError;
-use crate::GAME_SIZE;
 
 /// Represent a coordinate on a [`crate::grid::Sudoku`] grid. It is a number between 0 and [`GAME_SIZE`] - 1 (which is 8).
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Ord, Eq, Hash, Serialize, Deserialize)]
-pub struct CellCoordinate {
+pub struct CellCoordinate<const SQUARE_SIZE: usize> {
     number: usize,
 }
 
-impl CellCoordinate {
+impl<const SQUARE_SIZE: usize> CellCoordinate<SQUARE_SIZE> {
     /// Test if the given value is in bounds
     pub const fn is_in_bound(number: usize) -> bool {
-        number < GAME_SIZE
+        number < SQUARE_SIZE.pow(2)
     }
 
     /// Create a new cell number. the input should be `< 10` otherwise return [`None`]
@@ -22,11 +21,11 @@ impl CellCoordinate {
     /// ```
     /// use sudoku::grid::CellCoordinate;
     ///
-    /// assert!(CellCoordinate::new(0).is_some());
-    /// assert!(CellCoordinate::new(1).is_some());
-    /// assert!(CellCoordinate::new(8).is_some());
-    /// assert!(CellCoordinate::new(9).is_none());
-    /// assert!(CellCoordinate::new(10).is_none());
+    /// assert!(CellCoordinate::<3>::new(0).is_some());
+    /// assert!(CellCoordinate::<3>::new(1).is_some());
+    /// assert!(CellCoordinate::<3>::new(8).is_some());
+    /// assert!(CellCoordinate::<3>::new(9).is_none());
+    /// assert!(CellCoordinate::<3>::new(10).is_none());
     /// ```
     pub const fn new(number: usize) -> Option<Self> {
         if Self::is_in_bound(number) {
@@ -44,7 +43,7 @@ impl CellCoordinate {
     /// # use std::error::Error;
     ///
     /// # fn main() -> Result<(), Box<dyn Error>> {
-    /// let cell = CellCoordinate::new(2).ok_or(ExampleError::NoneError)?;
+    /// let cell = CellCoordinate::<3>::new(2).ok_or(ExampleError::NoneError)?;
     /// assert_eq!(cell.number(), 2);
     /// # Ok(())
     /// # }
@@ -60,7 +59,7 @@ impl CellCoordinate {
     /// ```
     /// use sudoku::grid::CellCoordinate;
     ///
-    /// let mut c = CellCoordinate::new(0).unwrap();
+    /// let mut c = CellCoordinate::<3>::new(0).unwrap();
     /// c.set_number(2).unwrap();
     /// assert_eq!(c.number(), 2);
     /// assert!(c.set_number(9).is_err());
@@ -76,13 +75,13 @@ impl CellCoordinate {
     }
 }
 
-impl Default for CellCoordinate {
+impl<const SQUARE_SIZE: usize> Default for CellCoordinate<SQUARE_SIZE> {
     fn default() -> Self {
         Self::new(0).expect("unreachable")
     }
 }
 
-impl Display for CellCoordinate {
+impl<const SQUARE_SIZE: usize> Display for CellCoordinate<SQUARE_SIZE> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.number)
     }
@@ -92,34 +91,34 @@ impl Display for CellCoordinate {
     Debug, Clone, Copy, PartialEq, PartialOrd, Ord, Eq, Hash, Serialize, Deserialize, Default,
 )]
 /// Represent a [`crate::cell::Cell`] position on a [`crate::grid::Sudoku`]
-pub struct CellPosition {
-    x: CellCoordinate,
-    y: CellCoordinate,
+pub struct CellPosition<const SQUARE_SIZE: usize> {
+    x: CellCoordinate<SQUARE_SIZE>,
+    y: CellCoordinate<SQUARE_SIZE>,
 }
 
-impl CellPosition {
+impl<const SQUARE_SIZE: usize> CellPosition<SQUARE_SIZE> {
     /// Create a new position.
-    pub const fn new(x: CellCoordinate, y: CellCoordinate) -> Self {
+    pub const fn new(x: CellCoordinate<SQUARE_SIZE>, y: CellCoordinate<SQUARE_SIZE>) -> Self {
         Self { x, y }
     }
 
     /// Get the x coord.
-    pub const fn x(&self) -> CellCoordinate {
+    pub const fn x(&self) -> CellCoordinate<SQUARE_SIZE> {
         self.x
     }
 
     /// Get the y coord.
-    pub const fn y(&self) -> CellCoordinate {
+    pub const fn y(&self) -> CellCoordinate<SQUARE_SIZE> {
         self.y
     }
 
     /// Get the x coord as mut.
-    pub fn x_mut(&mut self) -> &mut CellCoordinate {
+    pub fn x_mut(&mut self) -> &mut CellCoordinate<SQUARE_SIZE> {
         &mut self.x
     }
 
     /// Get the y coord as mut.
-    pub fn y_mut(&mut self) -> &mut CellCoordinate {
+    pub fn y_mut(&mut self) -> &mut CellCoordinate<SQUARE_SIZE> {
         &mut self.y
     }
 
@@ -139,7 +138,7 @@ impl CellPosition {
     }
 }
 
-impl Display for CellPosition {
+impl<const SQUARE_SIZE: usize> Display for CellPosition<SQUARE_SIZE> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "({}, {})", self.x, self.y)
     }
