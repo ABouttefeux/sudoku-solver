@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["GameSize","Represent a game size"]]});

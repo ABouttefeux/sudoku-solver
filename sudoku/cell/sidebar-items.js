@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["Cell","Reprensent a cell in a [`crate::grid::Sudoku`]"],["CellNumber","Represent a number that a cell can hold. Can only hold 1 thought 9"]]});

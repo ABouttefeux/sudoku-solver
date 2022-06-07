@@ -1,0 +1,1 @@
+initSidebarItems({"mod":[["cell","contain cell and cell states"],["error","Module containing the differents error"],["grid","Contain the main utility for [`Sudoku`]"],["size","Module for the [`GameSize`] which define the size of the game"]]});

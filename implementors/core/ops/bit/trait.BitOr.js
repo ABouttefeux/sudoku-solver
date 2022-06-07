@@ -1,0 +1,3 @@
+(function() {var implementors = {};
+implementors["sudoku"] = [{"text":"impl <a class=\"trait\" href=\"https://doc.rust-lang.org/nightly/core/ops/bit/trait.BitOr.html\" title=\"trait core::ops::bit::BitOr\">BitOr</a>&lt;<a class=\"enum\" href=\"sudoku/grid/enum.VerificationResult.html\" title=\"enum sudoku::grid::VerificationResult\">VerificationResult</a>&gt; for <a class=\"enum\" href=\"sudoku/grid/enum.VerificationResult.html\" title=\"enum sudoku::grid::VerificationResult\">VerificationResult</a>","synthetic":false,"types":["sudoku::grid::VerificationResult"]}];
+if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()
