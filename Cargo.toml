@@ -10,7 +10,7 @@ edition = "2021"
 serde = { version = "1.0", features = ["derive"]}
 approx = "0.5.1"
 array-macro = "2.1.5"
-console = "0.15.0"
+console = "0.15.2"
 rand = "0.8.5"
 
 [dev-dependencies]
