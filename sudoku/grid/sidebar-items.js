@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["Direction","SolveError","VerificationError","VerificationResult"],"struct":["BackTracePositionTracker","CellCoordinate","CellPosition","Column","Row","Square","Sudoku"],"trait":["SudokuIter"]};
